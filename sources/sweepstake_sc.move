@@ -1,108 +1,164 @@
-module sweepstake_sc::betting {
-    use sui::dynamic_object_field as ofield;
+module sweepstake_sc::bet_marketplace {
     use sui::coin::{Self, Coin};
-    use sui::bag::{Bag, Self};
-    use sui::table::{Table, Self};
+    use sui::sui::SUI;
+    use sui::ed25519;
+    use sui::event;
+    use sui::table::{Self, Table};
+    use sui::balance::{Self, Balance};
+    use sui::bcs;
 
-    const EAmountIncorrect: u64 = 1000;
-    const ENotOwner: u64 = 1001;
+    // Error codes
+    const EInvalidSignature: u64 = 0;
+    const EInsufficientBalance: u64 = 1;
+    const EBetInactive: u64 = 2;
+    const EInvalidPosition: u64 = 3;
+    const EBetAlreadyClosed: u64 = 4;
 
-    public struct Betting<phantom COIN> has key {
+    // Bet positions
+    const POSITION_BUY: u8 = 0;
+    const POSITION_SELL: u8 = 1;
+
+    // Bet object
+    public struct Bet has key {
         id: UID,
-        items: Bag,
-        payments: Table<address, Coin<COIN>>
+        creator: address,
+        description: vector<u8>,
+        total_amount: u64,
+        is_active: bool,
+        balance: Balance<SUI>,
+        positions: Table<address, u8>,
+        amounts: Table<address, u64>,
     }
 
-    public struct Listing has key, store {
-        id: UID,
-        ask: u64,
-        owner: address,
+    // Events
+    public struct BetCreated has copy, drop {
+        bet_id: address,
+        creator: address,
+        description: vector<u8>,
     }
 
-    public fun create<COIN>(ctx: &mut TxContext) {
-        let id = object::new(ctx);
-        let items = bag::new(ctx);
-        let payments = table::new<address, Coin<COIN>>(ctx);
-        transfer::share_object(Betting<COIN> { 
-            id, 
-            items,
-            payments
-        })
+    public struct PositionTaken has copy, drop {
+        bet_id: address,
+        better: address,
+        position: u8,
+        amount: u64,
     }
 
-    public fun list<T: key + store, COIN>(
-        betting: &mut Betting<COIN>,
-        item: T,
-        ask: u64,
+    public struct WinningsClaimed has copy, drop {
+        bet_id: address,
+        winner: address,
+        amount: u64,
+    }
+
+    // Create a new bet
+    public entry fun create_bet(
+        description: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let item_id = object::id(&item);
-        let mut listing = Listing {
-            ask,
+        let bet = Bet {
             id: object::new(ctx),
-            owner: tx_context::sender(ctx),
+            creator: tx_context::sender(ctx),
+            description,
+            total_amount: 0,
+            is_active: true,
+            balance: balance::zero(),
+            positions: table::new(ctx),
+            amounts: table::new(ctx),
         };
 
-        ofield::add(&mut listing.id, true, item);
-        bag::add(&mut betting.items, item_id, listing)
+        let bet_id = object::uid_to_address(&bet.id);
+        transfer::share_object(bet);
+
+        event::emit(BetCreated {
+            bet_id,
+            creator: tx_context::sender(ctx),
+            description,
+        });
     }
 
-    fun buy<T: key + store, COIN>(
-        betting: &mut Betting<COIN>,
-        item_id: ID,
-        paid: Coin<COIN>,
-    ): T {
-        let Listing {
-            mut id,
-            ask,
-            owner
-        } = bag::remove(&mut betting.items, item_id);
+    // Take a position in the bet
+    public entry fun take_position(
+        bet: &mut Bet,
+        position: u8,
+        payment: &mut Coin<SUI>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(bet.is_active, EBetInactive);
+        assert!(position == POSITION_BUY || position == POSITION_SELL, EInvalidPosition);
+        assert!(coin::value(payment) >= amount, EInsufficientBalance);
 
-        assert!(ask == coin::value(&paid), EAmountIncorrect);
+        let better = tx_context::sender(ctx);
 
-        // Check if there's already a Coin hanging and merge `paid` with it.
-        // Otherwise attach `paid` to the `Betting` under owner's `address`.
-        if (table::contains<address, Coin<COIN>>(&betting.payments, owner)) {
-            coin::join(
-                table::borrow_mut<address, Coin<COIN>>(&mut betting.payments, owner),
-                paid
-            )
+        // Transfer SUI to the bet's balance
+        let paid = coin::split(payment, amount, ctx);
+        let paid_balance = coin::into_balance(paid);
+        balance::join(&mut bet.balance, paid_balance);
+
+        // Record the position and amount
+        if (table::contains(&bet.positions, better)) {
+            // If the better already has a position, add to their existing amount
+            let existing_amount = table::remove(&mut bet.amounts, better);
+            table::add(&mut bet.amounts, better, existing_amount + amount);
         } else {
-            table::add(&mut betting.payments, owner, paid)
+            // If it's a new position, add both position and amount
+            table::add(&mut bet.positions, better, position);
+            table::add(&mut bet.amounts, better, amount);
         };
 
-        let item = ofield::remove(&mut id, true);
-        object::delete(id);
-        item
+        bet.total_amount = bet.total_amount + amount;
+
+        event::emit(PositionTaken {
+            bet_id: object::uid_to_address(&bet.id),
+            better,
+            position,
+            amount,
+        });
     }
 
-    public fun buy_and_take<T: key + store, COIN>(
-        betting: &mut Betting<COIN>,
-        item_id: ID,
-        paid: Coin<COIN>,
+    // Claim winnings
+    public entry fun claim_winnings(
+        bet: &mut Bet,
+        signature: vector<u8>,
+        public_key: vector<u8>,
         ctx: &mut TxContext
     ) {
-        transfer::public_transfer(
-            buy<T, COIN>(betting, item_id, paid),
-            tx_context::sender(ctx)
-        )
+        assert!(!bet.is_active, EBetInactive);
+        
+        let claimer = tx_context::sender(ctx);
+        assert!(table::contains(&bet.positions, claimer), EInvalidPosition);
+
+        let amount = *table::borrow(&bet.amounts, claimer);
+        // let position = *table::borrow(&bet.positions, claimer);
+
+        // Verify the signature
+        let message = bcs::to_bytes(&amount);
+        assert!(
+            ed25519::ed25519_verify(&signature, &public_key, &message),
+            EInvalidSignature
+        );
+
+        // Transfer winnings
+        let winnings_balance = balance::split(&mut bet.balance, amount);
+        let winnings_coin = coin::from_balance(winnings_balance, ctx);
+        transfer::public_transfer(winnings_coin, claimer);
+
+        // Remove the position and amount records
+        table::remove(&mut bet.positions, claimer);
+        table::remove(&mut bet.amounts, claimer);
+
+        event::emit(WinningsClaimed {
+            bet_id: object::uid_to_address(&bet.id),
+            winner: claimer,
+            amount,
+        });
     }
 
-    fun take_profits<COIN>(
-        betting: &mut Betting<COIN>,
-        ctx: &TxContext
-    ): Coin<COIN> {
-        table::remove<address, Coin<COIN>>(&mut betting.payments, tx_context::sender(ctx))
-    }
+    // Close the bet (only callable by the creator)
+    public entry fun close_bet(bet: &mut Bet, ctx: &mut TxContext) {
+        assert!(tx_context::sender(ctx) == bet.creator, 0);
+        assert!(bet.is_active, EBetAlreadyClosed);
 
-    #[lint_allow(self_transfer)]
-    public fun take_profits_and_keep<COIN>(
-        betting: &mut Betting<COIN>,
-        ctx: &mut TxContext
-    ) {
-        transfer::public_transfer(
-            take_profits(betting, ctx),
-            tx_context::sender(ctx)
-        )
+        bet.is_active = false;
     }
 }
