@@ -7,4 +7,4 @@ edition = "2024.beta"
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
-sweepstake_sc = "0x0"
+sweepstake_sc = "0x9c7f5de80a7b9eda7e51adf8118a85a7f5f890c42979feb911304ea4fd34438e"
