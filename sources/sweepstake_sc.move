@@ -8,11 +8,12 @@ module sweepstake_sc::bet_marketplace {
     use sui::bcs;
 
     // Error codes
-    const EInvalidSignature: u64 = 0;
-    const EInsufficientBalance: u64 = 1;
-    const EBetInactive: u64 = 2;
-    const EInvalidPosition: u64 = 3;
-    const EBetAlreadyClosed: u64 = 4;
+    const EInvalidSignature: u64 = 1000;
+    const EInsufficientBalance: u64 = 1001;
+    const EBetInactive: u64 = 1002;
+    const EInvalidPosition: u64 = 1003;
+    const EBetAlreadyClosed: u64 = 1004;
+    const EUnauthorized: u64 = 1005;
 
     // Bet positions
     const POSITION_BUY: u8 = 0;
@@ -28,6 +29,8 @@ module sweepstake_sc::bet_marketplace {
         balance: Balance<SUI>,
         positions: Table<address, u8>,
         amounts: Table<address, u64>,
+        start_date: u64,
+        end_date: u64,
     }
 
     // Events
@@ -35,6 +38,8 @@ module sweepstake_sc::bet_marketplace {
         bet_id: address,
         creator: address,
         description: vector<u8>,
+        start_date: u64,
+        end_date: u64,
     }
 
     public struct PositionTaken has copy, drop {
@@ -53,6 +58,8 @@ module sweepstake_sc::bet_marketplace {
     // Create a new bet
     public entry fun create_bet(
         description: vector<u8>,
+        start_date: u64,
+        end_date:u64,
         ctx: &mut TxContext
     ) {
         let bet = Bet {
@@ -64,6 +71,8 @@ module sweepstake_sc::bet_marketplace {
             balance: balance::zero(),
             positions: table::new(ctx),
             amounts: table::new(ctx),
+            start_date,
+            end_date
         };
 
         let bet_id = object::uid_to_address(&bet.id);
@@ -73,6 +82,8 @@ module sweepstake_sc::bet_marketplace {
             bet_id,
             creator: tx_context::sender(ctx),
             description,
+            start_date,
+            end_date,
         });
     }
 
@@ -156,7 +167,7 @@ module sweepstake_sc::bet_marketplace {
 
     // Close the bet (only callable by the creator)
     public entry fun close_bet(bet: &mut Bet, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == bet.creator, 0);
+        assert!(tx_context::sender(ctx) == bet.creator, EUnauthorized);
         assert!(bet.is_active, EBetAlreadyClosed);
 
         bet.is_active = false;
