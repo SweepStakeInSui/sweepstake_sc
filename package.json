@@ -1,0 +1,16 @@
+{
+  "name": "sweepstake_sc",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:SweepStakeInSui/sweepstake_sc.git",
+  "author": "hatrungt1n <hatrungtin2k2@gmail.com>",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "@mysten/sui": "^1.7.0"
+  },
+  "devDependencies": {
+    "prettier": "3.3.3"
+  }
+}
