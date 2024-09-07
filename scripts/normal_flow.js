@@ -4,7 +4,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 
 function suiClientInit() {
-  const client = new SuiClient({ url: getFullnodeUrl("testnet") });
+  const client = new SuiClient({ url: getFullnodeUrl("devnet") });
   return client;
 }
 const sender = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey("").secretKey);
