@@ -1,24 +1,20 @@
 module sweepstake::bet_marketplace {
     use std::string::String;
     use sui::balance;
-
     use sui::balance::Balance;
     use sui::coin::{Self, Coin};
     use sui::event::emit;
-    use sui::object;
     use sui::sui::SUI;
     use sui::transfer::{public_transfer, share_object};
     #[test_only]
     use std::string::utf8;
 
     #[test_only]
-    use sui::sui::SUI;
-    #[test_only]
     use sui::test_utils::{destroy};
     #[test_only]
     use sui::test_scenario as ts;
     #[test_only]
-    use 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::Coin::COIN as USDC;
+    use sweepstake::Coin::COIN as USDC;
 
 
     // Error codes
@@ -36,12 +32,26 @@ module sweepstake::bet_marketplace {
         balance: Balance<T>,
     }
 
+    // New treasury event
+    public struct NewTreasury has copy, drop {
+        id: ID,
+    }
+
     // Deposit event
     public struct Deposit has copy, drop {
+        owner: address,
         coin: String,
         amount: u64,
     }
 
+    // Withdraw event
+    public struct Withdraw has copy, drop {
+        owner: address,
+        coin: String,
+        amount: u64,
+    }
+
+    // The sweepstake contract has SUI as default token
     fun init(ctx: &mut TxContext) {
         let admin_cap = AdminCap {
             id: object::new(ctx)
@@ -49,43 +59,44 @@ module sweepstake::bet_marketplace {
         new_treasury<SUI>(&admin_cap, ctx);
 
         transfer::transfer(admin_cap, ctx.sender());
-
     }
 
     // Admin will call this function to create a new sweepstake_pair deposit currency
-    public fun new_treasury<T>(_: &AdminCap, ctx: &mut TxContext) {
+    entry fun new_treasury<T>(_: &AdminCap, ctx: &mut TxContext) {
         // Create a new sweepstake
+        let object_id = object::new(ctx);
+        emit(NewTreasury {
+            id: object::uid_to_inner(&object_id),
+        });
         let sweepstake = Sweepstake<T> {
-            id: object::new(ctx),
+            id: object_id,
             balance: balance::zero<T>(),
         };
+
+
         share_object(sweepstake);
     }
 
-    //Todo: Try to wrap amount to the deposit in SDk
     entry fun deposit<T>(
         sweepstake: &mut Sweepstake<T>,
-        deposit: &mut Coin<T>,
+        deposit: Coin<T>,
         name: String,
-        amount: u64,
         ctx: &mut TxContext
     ) {
-        assert!(deposit.value() >= amount, EInsufficientBalanceUser);
-        let payment = deposit.split(amount, ctx);
-        let balance = coin::into_balance(payment);
-        sweepstake.balance.join(balance);
-
+        let amount = deposit.value();
+        coin::put(&mut sweepstake.balance, deposit);
 
         emit(Deposit {
+            owner: ctx.sender(),
             coin: name,
             amount,
         });
     }
 
-
     entry fun withdraw<T>(
         _: &AdminCap,
         sweepstake: &mut Sweepstake<T>,
+        name_token: String,
         amount: u64,
         to: address,
         ctx: &mut TxContext
@@ -96,6 +107,12 @@ module sweepstake::bet_marketplace {
 
         let coin = coin::from_balance<T>(withdraw, ctx);
         public_transfer(coin, to);
+
+        emit(Withdraw {
+            owner: to,
+            coin: name_token,
+            amount,
+        })
     }
 
 
@@ -119,19 +136,17 @@ module sweepstake::bet_marketplace {
         ts::next_tx(&mut test, ADMIN);
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
-        new_treasury<SUI>(&admin_cap, ts::ctx(&mut test));
         new_treasury<USDC>(&admin_cap, ts::ctx(&mut test));
         //
         //PLayer ALICE deposits 50 SUI
         {
             ts::next_tx(&mut test, ALICE);
 
-            let mut pay = coin::mint_for_testing<SUI>(100, ts::ctx(&mut test));
+            let pay = coin::mint_for_testing<SUI>(100, ts::ctx(&mut test));
             let mut sweepstake = ts::take_shared<Sweepstake<SUI>>(&test);
-            deposit<SUI>(&mut sweepstake, &mut pay, utf8(b"SUI"), 50, ts::ctx(&mut test));
-            assert!(sweepstake.balance.value() == 50);
+            deposit<SUI>(&mut sweepstake, pay, utf8(b"SUI"), ts::ctx(&mut test));
+            assert!(sweepstake.balance.value() == 100);
 
-            destroy(pay);
             ts::return_shared(sweepstake);
             ts::next_tx(&mut test, ADMIN);
         };
@@ -140,13 +155,12 @@ module sweepstake::bet_marketplace {
         //Test deposit another token
         ts::next_tx(&mut test, ALICE);
         {
-            let mut usdc = coin::mint_for_testing<USDC>(1000, ts::ctx(&mut test));
+            let mut usdc = coin::mint_for_testing<USDC>(100, ts::ctx(&mut test));
             let mut sweepstake = ts::take_shared<Sweepstake<USDC>>(&test);
-            deposit<USDC>(&mut sweepstake, &mut usdc, utf8(b"USDT"), 50, ts::ctx(&mut test));
-            assert!(sweepstake.balance.value() == 50);
+            deposit<USDC>(&mut sweepstake, usdc, utf8(b"USDT"), ts::ctx(&mut test));
+            assert!(sweepstake.balance.value() == 100);
 
             ts::return_shared(sweepstake);
-            destroy(usdc);
         };
         destroy(admin_cap);
         ts::end(test);
@@ -170,21 +184,19 @@ module sweepstake::bet_marketplace {
         {
             ts::next_tx(&mut test, ALICE);
 
-            let mut pay = coin::mint_for_testing<SUI>(100, ts::ctx(&mut test));
+            let pay = coin::mint_for_testing<SUI>(50, ts::ctx(&mut test));
             let mut sweepstake = ts::take_shared<Sweepstake<SUI>>(&test);
-            deposit<SUI>(&mut sweepstake, &mut pay, utf8(b"SUI"), 50, ts::ctx(&mut test));
+            deposit<SUI>(&mut sweepstake, pay, utf8(b"SUI"), ts::ctx(&mut test));
             assert!(sweepstake.balance.value() == 50);
 
-
             ts::return_shared(sweepstake);
-            destroy(pay);
         };
 
         //Player ALICE withdraw 40 SUI
         ts::next_tx(&mut test, ADMIN);
         {
             let mut sweepstake = ts::take_shared<Sweepstake<SUI>>(&test);
-            withdraw(&admin_cap, &mut sweepstake, 40, ALICE, ts::ctx(&mut test));
+            withdraw(&admin_cap, &mut sweepstake, utf8(b"SUI"), 40, ALICE, ts::ctx(&mut test));
             assert!(sweepstake.balance.value() == 10);
 
             ts::return_shared(sweepstake);
