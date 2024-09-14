@@ -21,12 +21,17 @@ export async function deposit(
     owner: user_keypair.toSuiAddress(),
     coinType: coin_type,
   })
-  //TODO: Need to merge coin
-  const user_coin_id = user_coins_id.data[1]?.coinObjectId ?? ''
+
   const gaslessTx = await buildGaslessTransaction(
     txb => {
+      const first_coin = user_coins_id.data[0].coinObjectId
+      for (const coin of user_coins_id.data) {
+        if (coin.coinObjectId != first_coin) {
+          txb.mergeCoins(first_coin, [coin.coinObjectId])
+        }
+      }
       const [coin] = txb.splitCoins(
-        user_coin_id, // Get from user
+        first_coin, // Get from user
         [txb.pure.u64(amount)]
       )
       txb.moveCall({
