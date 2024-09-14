@@ -71,7 +71,6 @@ module sweepstake::sweepstake {
             balance: balance::zero<T>(),
         };
 
-
         share_object(sweepstake);
     }
 

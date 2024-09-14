@@ -31,4 +31,6 @@ export async function createMarket(
     transaction: tx,
   })
   await client.waitForTransaction(submittedTx)
+
+
 }

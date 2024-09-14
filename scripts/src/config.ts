@@ -10,7 +10,8 @@ export class EnvConfig {
   network: 'testnet' | 'mainnet' | 'devnet' | 'localnet'
   privateKey: string
   moduleAddress: string
-  adminCap: string
+  adminCapSweepTake: string
+  adminCapConditional: string
   objectSweepStakeSui: string
   userPrivateKey: string
   enokiKey: string
@@ -20,10 +21,10 @@ export class EnvConfig {
     this.network = 'testnet'
     this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
     this.moduleAddress = '0xa3f6be9ca08f72631cf60b195262efdc98717d7517327958ff5f483e0a8cf224'
-    this.adminCap = '0xf8d127071c2de63899c59a536f1c24c269a18f609e0f9f9559a4e9929e643374'
+    this.adminCapSweepTake = '0xaa572a2c65af152d24065e72d0cdf1d1b81c2bd95aff3ff7e42ead504f6350c3'
+    this.adminCapConditional = '0xf8d127071c2de63899c59a536f1c24c269a18f609e0f9f9559a4e9929e643374'
     this.objectSweepStakeSui = '0xc0295bab9d75c40e486e87fdf48c1fb4bd2d3dcdd032ffbee2d679646d67e8e6'
     this.userPrivateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
-    this.enokiKey = 'enoki_private_703b6123789a3d4279e4c59ec3fb96bb'
   }
 
   private getEnvVar(key: string): string | undefined {
@@ -45,7 +46,8 @@ export class AppConfig {
   moduleAddress: string
   admin: Ed25519Keypair
   user: Ed25519Keypair
-  adminCap: string
+  adminCapSweepTake: string
+  adminCapConditional: string
   objectSweepStakeSui: string
 
   constructor(config: EnvConfig) {
@@ -56,7 +58,8 @@ export class AppConfig {
     this.moduleAddress = config.moduleAddress
     this.admin = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.privateKey).secretKey)
     this.user = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.userPrivateKey).secretKey)
-    this.adminCap = config.adminCap
+    this.adminCapSweepTake = config.adminCapSweepTake
+    this.adminCapConditional = config.adminCapConditional
     this.objectSweepStakeSui = config.objectSweepStakeSui
   }
 }

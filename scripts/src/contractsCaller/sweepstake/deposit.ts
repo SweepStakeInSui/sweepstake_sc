@@ -2,6 +2,7 @@ import { buildGaslessTransaction, createSuiClient, GasStationClient } from '@shi
 import { AppConfig } from '../../config'
 import { Transaction } from '@mysten/sui/transactions'
 
+//Set up for the Shinami
 const nodeClient = createSuiClient('sui_testnet_0e45dbbb403f380943036c9bc168f895')
 const gasStationClient = new GasStationClient('sui_testnet_0e45dbbb403f380943036c9bc168f895')
 
@@ -40,17 +41,16 @@ export async function deposit(
   const senderSig = await Transaction.from(sponsoredResponse?.txBytes).sign({
     signer: user_keypair,
   })
-  const executeResponse = await nodeClient.executeTransactionBlock({
+  await nodeClient.executeTransactionBlock({
     transactionBlock: sponsoredResponse?.txBytes,
     signature: [senderSig?.signature, sponsoredResponse?.signature],
   })
 
-  console.log('execute', executeResponse)
   const events = await nodeClient.queryEvents({
     query: {
-      Sender: user_keypair.toSuiAddress(),
+      Sender: sender,
     },
   })
   // @ts-ignore
-  console.log('event-list', events.data[0].parsedJson) // Get the lastest event
+  console.log('event-list', events.data[0].parsedJson) // Get the latest event
 }
