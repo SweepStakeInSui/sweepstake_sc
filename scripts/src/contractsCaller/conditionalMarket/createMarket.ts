@@ -3,6 +3,7 @@ import { AppConfig } from '../../config'
 
 export async function createMarket(
   config: AppConfig,
+  name: string,
   description: string,
   condition: string,
   start_time: string,
@@ -10,7 +11,7 @@ export async function createMarket(
 ) {
   const client = config.client
   const admin = config.admin
-  const adminCap = config.adminCap
+  const adminCap = config.adminCapConditional
   const module_address = config.moduleAddress
 
   const tx = new Transaction()
@@ -18,6 +19,7 @@ export async function createMarket(
   tx.moveCall({
     arguments: [
       tx.object(adminCap),
+      tx.pure.string(name),
       tx.pure.string(description),
       tx.pure.string(condition),
       tx.pure.u64(start_time),
@@ -31,6 +33,16 @@ export async function createMarket(
     transaction: tx,
   })
   await client.waitForTransaction(submittedTx)
-
-
+  const events = await client.queryEvents({
+    query: {
+      Sender: admin.toSuiAddress(),
+    },
+  })
+  // @ts-ignore
+  console.log('Create market', events.data[0].parsedJson) // Get the latest event
+  //ex
+  // Create market
+  // {
+  //   id: '0x943bfbd5ecc597e3a9944327490db0f67b8c492ce5dac58e953d418d8576fc3d'
+  // }
 }

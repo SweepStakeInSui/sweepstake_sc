@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client'
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography'
-import { EnokiClient } from '@mysten/enoki'
+import { createSuiClient, GasStationClient } from "@shinami/clients/sui";
 
 dotenv.config()
 
@@ -14,16 +14,21 @@ export class EnvConfig {
   adminCapConditional: string
   objectSweepStakeSui: string
   userPrivateKey: string
-  enokiKey: string
+  shinamiPrivateKey: string
 
-  // I dont know why my env vars are not being read so i set in this file :D ??
+  // I don't know why my env vars are not being read, so I set in this file :D ??
   constructor() {
     this.network = 'testnet'
     this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
-    this.moduleAddress = '0xa3f6be9ca08f72631cf60b195262efdc98717d7517327958ff5f483e0a8cf224'
-    this.adminCapSweepTake = '0xaa572a2c65af152d24065e72d0cdf1d1b81c2bd95aff3ff7e42ead504f6350c3'
-    this.adminCapConditional = '0xf8d127071c2de63899c59a536f1c24c269a18f609e0f9f9559a4e9929e643374'
-    this.objectSweepStakeSui = '0xc0295bab9d75c40e486e87fdf48c1fb4bd2d3dcdd032ffbee2d679646d67e8e6'
+    this.shinamiPrivateKey='sui_testnet_0e45dbbb403f380943036c9bc168f895'
+
+    this.moduleAddress = '0x457fec13c41751455f3558c273d0508ae7317324022dd7e153c5b6f9dee83e34'
+    this.adminCapSweepTake = '0x5269c7da19f4ee2890e47e2dd83fcf10295aa4e92d268fe7b571f2d706502f76'
+    this.adminCapConditional = '0xdf40dea55005423834c8e00dc5ad0aff62d0b31c55c49cb4096c786f7626819c'
+    // This is default treasury of sweepstake
+    this.objectSweepStakeSui = '0x600a1f329156312549763fd60d33bb6fe5a088cf5ae24f14bf346f6df9dfde84'
+
+    // For testing purposes
     this.userPrivateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
   }
 
@@ -42,18 +47,16 @@ export class EnvConfig {
 
 export class AppConfig {
   client: SuiClient
-  enokiClient: EnokiClient
   moduleAddress: string
   admin: Ed25519Keypair
   user: Ed25519Keypair
   adminCapSweepTake: string
   adminCapConditional: string
   objectSweepStakeSui: string
+  shinamiClient: SuiClient
+  gasStationClient: GasStationClient
 
   constructor(config: EnvConfig) {
-    this.enokiClient = new EnokiClient({
-      apiKey: config.enokiKey,
-    })
     this.client = new SuiClient({ url: getFullnodeUrl('testnet') })
     this.moduleAddress = config.moduleAddress
     this.admin = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.privateKey).secretKey)
@@ -61,6 +64,8 @@ export class AppConfig {
     this.adminCapSweepTake = config.adminCapSweepTake
     this.adminCapConditional = config.adminCapConditional
     this.objectSweepStakeSui = config.objectSweepStakeSui
+    this.shinamiClient = createSuiClient(config.shinamiPrivateKey)
+    this.gasStationClient = new GasStationClient(config.shinamiPrivateKey)
   }
 }
 

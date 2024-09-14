@@ -29,4 +29,6 @@ export async function newTreasury(config: AppConfig, coin_type: string) {
   })
   // @ts-ignore
   console.log('new treasury id', events.data[0].parsedJson.id)
+  //Ex for usdc
+  // 0xbc9160f1b500bd678df864140db84c19a93cd10aaddaa5d37acc0163555db449
 }
