@@ -5,7 +5,7 @@ import { AppConfig } from '../../config'
 export async function newTreasury(config: AppConfig, coin_type: string) {
   const client = config.client
   const admin = config.admin
-  const admincap = config.adminCap
+  const admincap = config.adminCapSweepTake
   const module_address = config.moduleAddress
 
   const tx = new Transaction()
@@ -20,6 +20,13 @@ export async function newTreasury(config: AppConfig, coin_type: string) {
     signer: admin,
     transaction: tx,
   })
-  console.log(submittedTx.transaction)
   await client.waitForTransaction(submittedTx)
+
+  const events = await client.queryEvents({
+    query: {
+      Sender: admin.toSuiAddress(),
+    },
+  })
+  // @ts-ignore
+  console.log('new treasury id', events.data[0].parsedJson.id)
 }

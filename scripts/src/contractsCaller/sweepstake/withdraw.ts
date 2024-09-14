@@ -11,14 +11,14 @@ export async function withdraw(
 ) {
   const client = config.client
   const admin = config.admin
-  const admincap = config.adminCap
+  const adminCap = config.adminCapSweepTake
   const module_address = config.moduleAddress
   const coin_name = coin_type.split('::').pop() || ''
   const tx = new Transaction()
   tx.moveCall({
     typeArguments: [coin_type],
     arguments: [
-      tx.object(admincap),
+      tx.object(adminCap),
       tx.object(sweepstake_id),
       tx.pure.string(coin_name),
       tx.pure.u64(amount),
@@ -32,4 +32,12 @@ export async function withdraw(
     transaction: tx,
   })
   await client.waitForTransaction(submittedTx)
+
+  const events = await client.queryEvents({
+    query: {
+      Sender: admin.toSuiAddress(),
+    },
+  })
+  // @ts-ignore
+  console.log('Withdraw event', events.data[0].parsedJson)
 }

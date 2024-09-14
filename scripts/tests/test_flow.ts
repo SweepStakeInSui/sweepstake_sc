@@ -7,22 +7,23 @@ import {
 } from "../src/contractsCaller/conditionalMarket/getInforMarket";
 import { mintToken } from "../src/contractsCaller/conditionalMarket/mintToken";
 import { deposit } from "../src/contractsCaller/sweepstake/deposit";
+import { newTreasury } from "../src/contractsCaller/sweepstake/newTreasury";
+import { withdraw } from "../src/contractsCaller/sweepstake/withdraw";
 
-const test_deposit = async () => {
+const test = async () => {
   const config = createAppConfig()
 
   const sender = config.user.toSuiAddress()
 
-  const adminCap = config.adminCap
   const sweepstake = config.objectSweepStakeSui
-  await deposit(config, sweepstake, sender, '0x2::sui::SUI', '11000')
-  //await withdraw(config, sweepstake, sender, '0x2::sui::SUI', '1000000')
-  // await new_treasury(
+  // await deposit(config, sweepstake, sender, '0x2::sui::SUI', '11000')
+  await withdraw(config, sweepstake, sender, '0x2::sui::SUI', '1000')
+  // await newTreasury(
   //   config,
   //   '0xea10912247c015ead590e481ae8545ff1518492dee41d6d03abdad828c1d2bde::usdc::USDC'
   // )
-  // We have 0x118a17234bc567498c2f5b6b3373b609165dc8e2a65aa3dab6a57e2319398858 id after new_treasury USDC
-  const sweepstakeUSDC = '0x6ef4b90fdf0b8ac959c32a2793ccc5bb4add63493083b8f170f7cc01c649eae6'
+  // We have 0xfbd1b5ef632840a1cbc336ff73affa49ff6c6691142ff3fc5df966435bc06814 id after new_treasury USDC
+  const sweepstakeUSDC = '0xfbd1b5ef632840a1cbc336ff73affa49ff6c6691142ff3fc5df966435bc06814'
   // await deposit(
   //   config,
   //   sweepstakeUSDC,
@@ -54,4 +55,4 @@ const test_deposit = async () => {
   // await checkMarketInfo(config, market_test)
 }
 
-test_deposit().then(r => console.log(r))
+test().then(r => console.log(r))
