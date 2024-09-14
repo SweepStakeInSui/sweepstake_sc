@@ -31,7 +31,6 @@
 	},
 	"dependencies": {
 		"@mysten/dapp-kit": "^0.14.20",
-		"@mysten/enoki": "^0.4.2",
 		"@mysten/sui": "^1.4.0",
 		"commander": "^12.1.0",
 		"dotenv": "^16.4.5",

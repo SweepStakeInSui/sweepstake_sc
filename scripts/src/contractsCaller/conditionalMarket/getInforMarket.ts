@@ -75,16 +75,19 @@ export async function checkMarketInfo(config: AppConfig, market_id: string) {
   })
   const result = submittedTx.results.pop()
   if (result && result.returnValues) {
-    const [descriptionArray] = result.returnValues[0]
-    const [conditionsArray] = result.returnValues[1]
-    const [startTimeArray] = result.returnValues[2]
-    const [endTimeArray] = result.returnValues[3]
+    const [nameArray] = result.returnValues[0]
+    const [descriptionArray] = result.returnValues[1]
+    const [conditionsArray] = result.returnValues[2]
+    const [startTimeArray] = result.returnValues[3]
+    const [endTimeArray] = result.returnValues[4]
 
+    const name = Buffer.from(nameArray).toString('utf8')
     const description = Buffer.from(descriptionArray).toString('utf8')
     const conditions = Buffer.from(conditionsArray).toString('utf8')
     const startTime = Buffer.from(startTimeArray).readBigUInt64LE()
     const endTime = Buffer.from(endTimeArray).readBigUInt64LE()
 
+    console.log('Name:', name)
     console.log('Description:', description)
     console.log('Conditions:', conditions)
     console.log('Start Time:', startTime.toString())

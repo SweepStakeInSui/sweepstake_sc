@@ -40,4 +40,13 @@ export async function withdraw(
   })
   // @ts-ignore
   console.log('Withdraw event', events.data[0].parsedJson)
+  //ex
+  // Withdraw event
+  // {
+  //   amount: '1000',
+  //   coin: 'SUI',
+  //   owner: '0x3be3b80978680228b4c472fd208e9503b92b22a6fefc7fd74c4651f2c302b544'
+  // }
+
+
 }

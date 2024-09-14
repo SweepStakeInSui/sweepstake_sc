@@ -22,6 +22,8 @@ module sweepstake::conditional_market {
     // Bet object
     public struct Market has key, store {
         id: UID,
+        ///Name of the bet
+        name: String,
         /// Description of the bet
         description: String,
         /// Conditions of the bet
@@ -60,6 +62,7 @@ module sweepstake::conditional_market {
     // Create a new market
     entry fun create_market(
         _: &AdminCap,
+        name: String,
         description: String,
         conditions: String,
         start_time: u64,
@@ -74,6 +77,7 @@ module sweepstake::conditional_market {
         let address = object::uid_to_address(&object_id);
         let market = Market {
             id: object_id,
+            name,
             description,
             conditions,
             start_time,
@@ -97,8 +101,8 @@ module sweepstake::conditional_market {
         *amount
     }
 
-    public fun get_market_info(market: &Market): (String, String, u64, u64) {
-        (market.description, market.conditions, market.start_time, market.end_time)
+    public fun get_market_info(market: &Market): (String, String, String, u64, u64) {
+        (market.name, market.description, market.conditions, market.start_time, market.end_time)
     }
 
     public fun get_description(market: &Market): String {
@@ -204,9 +208,8 @@ module sweepstake::conditional_market {
         let block_time = ts::ctx(&mut test).epoch_timestamp_ms();
         print(&block_time);
 
-        let market = create_market(&admin_cap, utf8(b"Will it rain tomorrow?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
-
-        let market2 = create_market(&admin_cap, utf8(b"Will it rain y?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
+        let market = create_market(&admin_cap,utf8(b"Rain"), utf8(b"Will it rain tomorrow?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
+        let market2 = create_market(&admin_cap, utf8(b"Rain11"),utf8(b"Will it rain y?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
         ts::next_tx(&mut test, ADMIN);
         print(&market);
         print(&market2);
