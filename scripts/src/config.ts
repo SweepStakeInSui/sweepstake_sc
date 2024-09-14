@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv'
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519'
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client'
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography'
-import { EnokiClient } from "@mysten/enoki";
+import { EnokiClient } from '@mysten/enoki'
 
 dotenv.config()
 
@@ -15,13 +15,14 @@ export class EnvConfig {
   userPrivateKey: string
   enokiKey: string
 
+  // I dont know why my env vars are not being read so i set in this file :D ??
   constructor() {
     this.network = 'testnet'
-    this.privateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
-    this.moduleAddress = '0x3de40c6a37d2069df0c5c92580f112b47fd82a5e3e9bae1eb00c87f6f87b72fb'
-    this.adminCap = '0xd982a966d49f090a8065cb45f4d1598bda4787a5e6da9655102b8312334fb983'
-    this.objectSweepStakeSui = '0x5eb5a9f77fdb18b46e219f438c515b72838bb47b987f8aa0b2019bf44100998d'
-    this.userPrivateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
+    this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
+    this.moduleAddress = '0xa3f6be9ca08f72631cf60b195262efdc98717d7517327958ff5f483e0a8cf224'
+    this.adminCap = '0xf8d127071c2de63899c59a536f1c24c269a18f609e0f9f9559a4e9929e643374'
+    this.objectSweepStakeSui = '0xc0295bab9d75c40e486e87fdf48c1fb4bd2d3dcdd032ffbee2d679646d67e8e6'
+    this.userPrivateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
     this.enokiKey = 'enoki_private_703b6123789a3d4279e4c59ec3fb96bb'
   }
 
