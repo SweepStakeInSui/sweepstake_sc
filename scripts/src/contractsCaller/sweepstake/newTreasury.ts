@@ -20,11 +20,11 @@ export async function newTreasury(config: AppConfig, coin_type: string) {
     signer: admin,
     transaction: tx,
   })
-  await client.waitForTransaction(submittedTx)
+  const txb = await client.waitForTransaction(submittedTx)
 
   const events = await client.queryEvents({
     query: {
-      Sender: admin.toSuiAddress(),
+      Transaction: txb.digest,
     },
   })
   // @ts-ignore

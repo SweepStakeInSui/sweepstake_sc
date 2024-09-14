@@ -4,8 +4,6 @@ import { AppConfig } from '../../config'
 
 export async function checkYesBalance(config: AppConfig, market_id: string, user: string) {
   const client = config.client
-  const admin = config.admin
-  const admincap = config.adminCapConditional
   const module_address = config.moduleAddress
 
   const tx = new Transaction()
@@ -32,8 +30,6 @@ export async function checkYesBalance(config: AppConfig, market_id: string, user
 
 export async function checkNoBalance(config: AppConfig, market_id: string, user: string) {
   const client = config.client
-  const admin = config.admin
-  const admincap = config.adminCapConditional
   const module_address = config.moduleAddress
 
   const tx = new Transaction()

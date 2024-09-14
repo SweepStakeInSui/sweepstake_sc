@@ -16,8 +16,8 @@ const test = async () => {
   const sender = config.user.toSuiAddress()
   // console.log('sender',sender)
   //
-  // const sweepstake = config.objectSweepStakeSui
-  // await deposit(config, sweepstake, sender, '0x2::sui::SUI', '11000')
+  const sweepstake = config.objectSweepStakeSui
+  await deposit(config, sweepstake, sender, '0x2::sui::SUI', '1100')
   // await withdraw(config, sweepstake, sender, '0x2::sui::SUI', '1000')
   // await newTreasury(
   //   config,
@@ -55,7 +55,7 @@ const test = async () => {
   //
   // await checkYesBalance(config, market_test, sender)
   // await checkNoBalance(config, market_test, sender)
-  await checkMarketInfo(config, market_test)
+  // await checkMarketInfo(config, market_test)
 }
 
 test().then(r => console.log(r))

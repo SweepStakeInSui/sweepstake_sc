@@ -31,11 +31,11 @@ export async function withdraw(
     signer: admin,
     transaction: tx,
   })
-  await client.waitForTransaction(submittedTx)
+  const txb = await client.waitForTransaction(submittedTx)
 
   const events = await client.queryEvents({
     query: {
-      Sender: admin.toSuiAddress(),
+      Transaction: txb.digest,
     },
   })
   // @ts-ignore
@@ -47,6 +47,4 @@ export async function withdraw(
   //   coin: 'SUI',
   //   owner: '0x3be3b80978680228b4c472fd208e9503b92b22a6fefc7fd74c4651f2c302b544'
   // }
-
-
 }

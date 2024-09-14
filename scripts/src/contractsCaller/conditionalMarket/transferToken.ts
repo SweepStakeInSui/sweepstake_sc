@@ -12,7 +12,7 @@ export async function transfer_yes_token(
 ) {
   const client = config.client
   const admin = config.admin
-  const adminCap = config.adminCap
+  const adminCap = config.adminCapConditional
   const module_address = config.moduleAddress
 
   const tx = new Transaction()
@@ -44,7 +44,7 @@ export async function transfer_no_token(
 ) {
   const client = config.client
   const admin = config.admin
-  const adminCap = config.adminCap
+  const adminCap = config.adminCapConditional
   const module_address = config.moduleAddress
 
   const tx = new Transaction()
