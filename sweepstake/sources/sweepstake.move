@@ -1,4 +1,4 @@
-module sweepstake::bet_marketplace {
+module sweepstake::sweepstake {
     use std::string::String;
     use sui::balance;
     use sui::balance::Balance;
@@ -13,12 +13,9 @@ module sweepstake::bet_marketplace {
     use sui::test_utils::{destroy};
     #[test_only]
     use sui::test_scenario as ts;
-    #[test_only]
-    use sweepstake::Coin::COIN as USDC;
 
 
     // Error codes
-    const EInsufficientBalanceUser: u64 = 1001;
     const EInsufficientBalanceAdmin: u64 = 1002;
 
     public struct AdminCap has key {
@@ -31,6 +28,7 @@ module sweepstake::bet_marketplace {
         /// Balance of the sweepstake
         balance: Balance<T>,
     }
+
 
     // New treasury event
     public struct NewTreasury has copy, drop {
@@ -81,7 +79,7 @@ module sweepstake::bet_marketplace {
         sweepstake: &mut Sweepstake<T>,
         deposit: Coin<T>,
         name: String,
-        ctx: &mut TxContext
+        ctx:  &TxContext
     ) {
         let amount = deposit.value();
         coin::put(&mut sweepstake.balance, deposit);
@@ -121,6 +119,9 @@ module sweepstake::bet_marketplace {
     #[test_only] const ALICE: address = @0xA;
 
     #[test_only]
+    public struct USDC has drop {}
+
+    #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx);
     }
@@ -155,7 +156,7 @@ module sweepstake::bet_marketplace {
         //Test deposit another token
         ts::next_tx(&mut test, ALICE);
         {
-            let mut usdc = coin::mint_for_testing<USDC>(100, ts::ctx(&mut test));
+            let usdc = coin::mint_for_testing<USDC>(100, ts::ctx(&mut test));
             let mut sweepstake = ts::take_shared<Sweepstake<USDC>>(&test);
             deposit<USDC>(&mut sweepstake, usdc, utf8(b"USDT"), ts::ctx(&mut test));
             assert!(sweepstake.balance.value() == 100);

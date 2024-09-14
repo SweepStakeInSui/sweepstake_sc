@@ -16,5 +16,6 @@
     "strictNullChecks": true,
     "noEmit": true
   },
-  "include": ["src/contracts_caller/*.ts", "src/*.ts", "tests/test_flow.ts"]
+  "include": [
+    "src/contractsCaller/*.ts", "src/*.ts", "tests/test_flow.ts", "src/**/*.ts"]
 }
