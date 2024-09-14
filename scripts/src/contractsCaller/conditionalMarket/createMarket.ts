@@ -28,14 +28,13 @@ export async function createMarket(
     target: `${module_address}::conditional_market::create_market`,
   })
   tx.setGasBudget(10000000)
-  const submittedTx = await client.signAndExecuteTransaction({
+  const txb = await client.signAndExecuteTransaction({
     signer: admin,
     transaction: tx,
   })
-  await client.waitForTransaction(submittedTx)
   const events = await client.queryEvents({
     query: {
-      Sender: admin.toSuiAddress(),
+      Transaction: txb.digest,
     },
   })
   // @ts-ignore

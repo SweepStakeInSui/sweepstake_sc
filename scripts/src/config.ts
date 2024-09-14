@@ -20,7 +20,7 @@ export class EnvConfig {
   constructor() {
     this.network = 'testnet'
     this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
-    this.shinamiPrivateKey='sui_testnet_0e45dbbb403f380943036c9bc168f895'
+    this.shinamiPrivateKey = 'sui_testnet_0e45dbbb403f380943036c9bc168f895'
 
     this.moduleAddress = '0x457fec13c41751455f3558c273d0508ae7317324022dd7e153c5b6f9dee83e34'
     this.adminCapSweepTake = '0x5269c7da19f4ee2890e47e2dd83fcf10295aa4e92d268fe7b571f2d706502f76'

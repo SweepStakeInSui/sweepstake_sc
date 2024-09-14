@@ -1,4 +1,4 @@
-import { buildGaslessTransaction, createSuiClient, GasStationClient } from '@shinami/clients/sui'
+import { buildGaslessTransaction } from '@shinami/clients/sui'
 import { AppConfig } from '../../config'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -13,6 +13,7 @@ export async function deposit(
   const user_keypair = config.user
 
   const nodeClient = config.shinamiClient
+  const client = config.client
   const gasStationClient = config.gasStationClient
   const module_address = config.moduleAddress
   const coin_name = coin_type.split('::').pop() || ''
@@ -20,7 +21,8 @@ export async function deposit(
     owner: user_keypair.toSuiAddress(),
     coinType: coin_type,
   })
-  const user_coin_id = user_coins_id.data[0]?.coinObjectId ?? ''
+  //TODO: Need to merge coin
+  const user_coin_id = user_coins_id.data[1]?.coinObjectId ?? ''
   const gaslessTx = await buildGaslessTransaction(
     txb => {
       const [coin] = txb.splitCoins(
@@ -44,17 +46,16 @@ export async function deposit(
   })
 
   //TODO: Return back the senderSig from FE and execute the transaction
-  await nodeClient.executeTransactionBlock({
+  const txb = await nodeClient.executeTransactionBlock({
     transactionBlock: sponsoredResponse?.txBytes,
     signature: [senderSig?.signature, sponsoredResponse?.signature],
   })
 
-  const events = await nodeClient.queryEvents({
+  const events = await client.queryEvents({
     query: {
-      Sender: sender,
+      Transaction: txb.digest,
     },
   })
-  // @ts-ignore
   console.log('deposit', events.data[0].parsedJson) // Get the latest event
   //ex:
   // deposit
@@ -63,5 +64,4 @@ export async function deposit(
   //   coin: 'SUI',
   //   owner: '0x3be3b80978680228b4c472fd208e9503b92b22a6fefc7fd74c4651f2c302b544'
   // }
-
 }

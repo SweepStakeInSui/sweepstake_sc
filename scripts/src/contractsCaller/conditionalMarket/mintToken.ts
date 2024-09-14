@@ -11,7 +11,7 @@ export async function mintToken(
 ) {
   const client = config.client
   const admin = config.admin
-  const adminCap = config.adminCap
+  const adminCap = config.adminCapConditional
   const module_address = config.moduleAddress
 
   const tx = new Transaction()
