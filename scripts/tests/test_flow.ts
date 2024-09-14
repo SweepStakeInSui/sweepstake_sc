@@ -17,7 +17,7 @@ const test = async () => {
   // console.log('sender',sender)
   //
   const sweepstake = config.objectSweepStakeSui
-  await deposit(config, sweepstake, sender, '0x2::sui::SUI', '1100')
+  await deposit(config, sweepstake, sender, '0x2::sui::SUI', '110000')
   // await withdraw(config, sweepstake, sender, '0x2::sui::SUI', '1000')
   // await newTreasury(
   //   config,

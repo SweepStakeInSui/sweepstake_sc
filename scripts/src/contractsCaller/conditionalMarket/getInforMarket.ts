@@ -17,7 +17,7 @@ export async function checkYesBalance(config: AppConfig, market_id: string, user
     sender: user,
     transactionBlock: tx,
   })
-  const result = submittedTx.results.pop()
+  const result = submittedTx.results?.pop()
   if (result && result.returnValues) {
     const [byteArray] = result.returnValues[0]
     const buffer = Buffer.from(byteArray)
@@ -43,7 +43,7 @@ export async function checkNoBalance(config: AppConfig, market_id: string, user:
     sender: user,
     transactionBlock: tx,
   })
-  const result = submittedTx.results.pop()
+  const result = submittedTx.results?.pop()
   if (result && result.returnValues) {
     const [byteArray] = result.returnValues[0]
     const buffer = Buffer.from(byteArray)
@@ -69,7 +69,7 @@ export async function checkMarketInfo(config: AppConfig, market_id: string) {
     transactionBlock: tx,
     sender: '0x3be3b80978680228b4c472fd208e9503b92b22a6fefc7fd74c4651f2c302b544',
   })
-  const result = submittedTx.results.pop()
+  const result = submittedTx.results?.pop()
   if (result && result.returnValues) {
     const [nameArray] = result.returnValues[0]
     const [descriptionArray] = result.returnValues[1]
