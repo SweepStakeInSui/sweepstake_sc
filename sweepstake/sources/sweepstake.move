@@ -1,13 +1,11 @@
 module sweepstake::sweepstake {
-    use std::string::String;
+    use std::string::{String, utf8};
     use sui::balance;
     use sui::balance::Balance;
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::sui::SUI;
     use sui::transfer::{public_transfer, share_object};
-    #[test_only]
-    use std::string::utf8;
 
     #[test_only]
     use sui::test_utils::{destroy};
@@ -18,72 +16,77 @@ module sweepstake::sweepstake {
     // Error codes
     const EInsufficientBalanceAdmin: u64 = 1002;
 
+    // AdminCap object
     public struct AdminCap has key {
         id: UID,
     }
 
-    // Sweepstake object
-    public struct Sweepstake<phantom T> has key {
+    // treasury object
+    public struct Treasury<phantom T> has key {
         id: UID,
-        /// Balance of the sweepstake
+        /// Balance of the treasury
         balance: Balance<T>,
+        /// Metadata of the crurrency
+        coin_name: String
     }
 
 
     // New treasury event
-    public struct NewTreasury has copy, drop {
+    public struct NewTreasuryEvent has copy, drop {
         id: ID,
     }
 
     // Deposit event
-    public struct Deposit has copy, drop {
+    public struct DepositEvent has copy, drop {
         owner: address,
         coin: String,
         amount: u64,
     }
 
     // Withdraw event
-    public struct Withdraw has copy, drop {
+    public struct WithdrawEvent has copy, drop {
         owner: address,
         coin: String,
         amount: u64,
     }
 
-    // The sweepstake contract has SUI as default token
+    // The treasury contract has SUI as default token
     fun init(ctx: &mut TxContext) {
         let admin_cap = AdminCap {
             id: object::new(ctx)
         };
-        new_treasury<SUI>(&admin_cap, ctx);
-
+        new_treasury<SUI>(&admin_cap, utf8(b"SUI"), ctx);
         transfer::transfer(admin_cap, ctx.sender());
     }
 
-    // Admin will call this function to create a new sweepstake_pair deposit currency
-    entry fun new_treasury<T>(_: &AdminCap, ctx: &mut TxContext) {
-        // Create a new sweepstake
+    // Admin will call this function to create a new treasury_pair deposit currency
+    entry fun new_treasury<T>(_: &AdminCap, coin_name: String, ctx: &mut TxContext) {
+        // Create a new treasury
         let object_id = object::new(ctx);
-        emit(NewTreasury {
+        // Emit new treasury's id event
+        emit(NewTreasuryEvent {
             id: object::uid_to_inner(&object_id),
         });
-        let sweepstake = Sweepstake<T> {
+        // Share the treasury object
+        let treasury = Treasury<T> {
             id: object_id,
             balance: balance::zero<T>(),
+            coin_name,
         };
 
-        share_object(sweepstake);
+        share_object(treasury);
     }
 
     entry fun deposit<T>(
-        sweepstake: &mut Sweepstake<T>,
+        treasury: &mut Treasury<T>,
         deposit: Coin<T>,
-        name: String,
         ctx:  &TxContext
     ) {
+        let name = treasury.coin_name;
         let amount = deposit.value();
-        coin::put(&mut sweepstake.balance, deposit);
+        coin::put(&mut treasury.balance, deposit);
 
-        emit(Deposit {
+        emit(DepositEvent {
             owner: ctx.sender(),
             coin: name,
             amount,
@@ -92,22 +95,21 @@ module sweepstake::sweepstake {
 
     entry fun withdraw<T>(
         _: &AdminCap,
-        sweepstake: &mut Sweepstake<T>,
-        name_token: String,
+        treasury: &mut Treasury<T>,
         amount: u64,
         to: address,
         ctx: &mut TxContext
     ) {
-        assert!(sweepstake.balance.value() >= amount, EInsufficientBalanceAdmin);
-
-        let withdraw = sweepstake.balance.split(amount);
+        assert!(treasury.balance.value() >= amount, EInsufficientBalanceAdmin);
+        let name = treasury.coin_name;
+        let withdraw = treasury.balance.split(amount);
 
         let coin = coin::from_balance<T>(withdraw, ctx);
         public_transfer(coin, to);
 
-        emit(Withdraw {
+        emit(WithdrawEvent {
             owner: to,
-            coin: name_token,
+            coin: name,
             amount,
         })
     }
@@ -127,27 +129,28 @@ module sweepstake::sweepstake {
 
     #[test]
     fun test_deposit() {
-        //ADMIN creates a new sweepstake
+        //ADMIN creates a new treasury
         let mut test = ts::begin(ADMIN);
         {
             init_for_testing(ts::ctx(&mut test));
         };
 
         ts::next_tx(&mut test, ADMIN);
+        //NOTE: With new MetadataCoin type, we can't test this function.
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
-        new_treasury<USDC>(&admin_cap, ts::ctx(&mut test));
+        new_treasury<USDC>(&admin_cap,utf8(b"USDC") ,ts::ctx(&mut test));
         //
         //PLayer ALICE deposits 50 SUI
         {
             ts::next_tx(&mut test, ALICE);
 
             let pay = coin::mint_for_testing<SUI>(100, ts::ctx(&mut test));
-            let mut sweepstake = ts::take_shared<Sweepstake<SUI>>(&test);
-            deposit<SUI>(&mut sweepstake, pay, utf8(b"SUI"), ts::ctx(&mut test));
-            assert!(sweepstake.balance.value() == 100);
+            let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
+            deposit<SUI>(&mut treasury, pay, ts::ctx(&mut test));
+            assert!(treasury.balance.value() == 100);
 
-            ts::return_shared(sweepstake);
+            ts::return_shared(treasury);
             ts::next_tx(&mut test, ADMIN);
         };
 
@@ -156,11 +159,11 @@ module sweepstake::sweepstake {
         ts::next_tx(&mut test, ALICE);
         {
             let usdc = coin::mint_for_testing<USDC>(100, ts::ctx(&mut test));
-            let mut sweepstake = ts::take_shared<Sweepstake<USDC>>(&test);
-            deposit<USDC>(&mut sweepstake, usdc, utf8(b"USDT"), ts::ctx(&mut test));
-            assert!(sweepstake.balance.value() == 100);
+            let mut treasury = ts::take_shared<Treasury<USDC>>(&test);
+            deposit<USDC>(&mut treasury, usdc, ts::ctx(&mut test));
+            assert!(treasury.balance.value() == 100);
 
-            ts::return_shared(sweepstake);
+            ts::return_shared(treasury);
         };
         destroy(admin_cap);
         ts::end(test);
@@ -168,7 +171,7 @@ module sweepstake::sweepstake {
 
     #[test]
     fun test_withdraw() {
-        //ADMIN creates a new sweepstake
+        //ADMIN creates a new treasury
         let mut test = ts::begin(ADMIN);
         {
             init_for_testing(ts::ctx(&mut test));
@@ -177,7 +180,7 @@ module sweepstake::sweepstake {
         ts::next_tx(&mut test, ADMIN);
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
-        new_treasury<SUI>(&admin_cap, ts::ctx(&mut test));
+        new_treasury<SUI>(&admin_cap,utf8(b"SUI") ,ts::ctx(&mut test));
 
         //
         //PLayer ALICE deposits 50 SUI
@@ -185,21 +188,21 @@ module sweepstake::sweepstake {
             ts::next_tx(&mut test, ALICE);
 
             let pay = coin::mint_for_testing<SUI>(50, ts::ctx(&mut test));
-            let mut sweepstake = ts::take_shared<Sweepstake<SUI>>(&test);
-            deposit<SUI>(&mut sweepstake, pay, utf8(b"SUI"), ts::ctx(&mut test));
-            assert!(sweepstake.balance.value() == 50);
+            let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
+            deposit<SUI>(&mut treasury, pay, ts::ctx(&mut test));
+            assert!(treasury.balance.value() == 50);
 
-            ts::return_shared(sweepstake);
+            ts::return_shared(treasury);
         };
 
         //Player ALICE withdraw 40 SUI
         ts::next_tx(&mut test, ADMIN);
         {
-            let mut sweepstake = ts::take_shared<Sweepstake<SUI>>(&test);
-            withdraw(&admin_cap, &mut sweepstake, utf8(b"SUI"), 40, ALICE, ts::ctx(&mut test));
-            assert!(sweepstake.balance.value() == 10);
+            let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
+            withdraw(&admin_cap, &mut treasury, 40, ALICE, ts::ctx(&mut test));
+            assert!(treasury.balance.value() == 10);
 
-            ts::return_shared(sweepstake);
+            ts::return_shared(treasury);
         };
 
         ts::return_to_sender(&test, admin_cap);

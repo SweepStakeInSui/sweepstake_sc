@@ -1,8 +1,9 @@
-import { Transaction } from '@mysten/sui/transactions'
-import { AppConfig } from '../../config'
+import { Transaction } from '@mysten/sui/transactions';
+import { AppConfig } from '../../config';
 
 export async function createMarket(
   config: AppConfig,
+  creator: string,
   name: string,
   description: string,
   condition: string,
@@ -19,6 +20,7 @@ export async function createMarket(
   tx.moveCall({
     arguments: [
       tx.object(adminCap),
+      tx.pure.address(creator),
       tx.pure.string(name),
       tx.pure.string(description),
       tx.pure.string(condition),
@@ -37,7 +39,6 @@ export async function createMarket(
       Transaction: txb.digest,
     },
   })
-  // @ts-ignore
   console.log('Create market', events.data[0].parsedJson) // Get the latest event
   //ex
   // Create market

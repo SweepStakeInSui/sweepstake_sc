@@ -16,9 +16,9 @@ export async function deposit(
   const client = config.client
   const gasStationClient = config.gasStationClient
   const module_address = config.moduleAddress
-  const coin_name = coin_type.split('::').pop() || ''
+
   const user_coins_id = await nodeClient.getCoins({
-    owner: user_keypair.toSuiAddress(),
+    owner: sender,
     coinType: coin_type,
   })
 
@@ -36,13 +36,13 @@ export async function deposit(
       )
       txb.moveCall({
         typeArguments: [coin_type],
-        arguments: [txb.object(sweepstakes_id), coin, txb.pure.string(coin_name)],
+        arguments: [txb.object(sweepstakes_id), coin],
         target: `${module_address}::sweepstake::deposit`,
       })
     },
     { sui: nodeClient }
   )
-  gaslessTx.sender = user_keypair.toSuiAddress()
+  gaslessTx.sender = sender
   const sponsoredResponse = await gasStationClient.sponsorTransaction(gaslessTx)
 
   ///TODO: Need to send it to FE for user sign

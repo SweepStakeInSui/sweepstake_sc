@@ -17,5 +17,5 @@
     "noEmit": true
   },
   "include": [
-    "src/contractsCaller/*.ts", "src/*.ts", "tests/test_flow.ts", "src/**/*.ts"]
+    "src/contractsCaller/*.ts", "src/*.ts", "tests/test_flow.ts", "src/**/*.ts", "eslint.config.mjs"]
 }

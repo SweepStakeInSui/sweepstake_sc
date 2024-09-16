@@ -22,6 +22,8 @@ module sweepstake::conditional_market {
     // Bet object
     public struct Market has key, store {
         id: UID,
+        /// Address of creator,
+        creator: address,
         ///Name of the bet
         name: String,
         /// Description of the bet
@@ -47,7 +49,7 @@ module sweepstake::conditional_market {
 
 
     // Events
-    public struct NewMarket has copy, drop {
+    public struct NewMarketEvent has copy, drop {
         id: ID,
     }
 
@@ -62,6 +64,7 @@ module sweepstake::conditional_market {
     // Create a new market
     entry fun create_market(
         _: &AdminCap,
+        creator: address,
         name: String,
         description: String,
         conditions: String,
@@ -73,10 +76,11 @@ module sweepstake::conditional_market {
         assert!(end_time > start_time, EInvalidTimeArg);
 
         let object_id = object::new(ctx);
-        emit(NewMarket { id: uid_to_inner(&object_id) });
+        emit(NewMarketEvent { id: uid_to_inner(&object_id) });
         let address = object::uid_to_address(&object_id);
         let market = Market {
             id: object_id,
+            creator,
             name,
             description,
             conditions,
@@ -208,14 +212,14 @@ module sweepstake::conditional_market {
         let block_time = ts::ctx(&mut test).epoch_timestamp_ms();
         print(&block_time);
 
-        let market = create_market(&admin_cap,utf8(b"Rain"), utf8(b"Will it rain tomorrow?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
-        let market2 = create_market(&admin_cap, utf8(b"Rain11"),utf8(b"Will it rain y?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
+        let market = create_market(&admin_cap, ALICE, utf8(b"Rain"), utf8(b"Will it rain tomorrow?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
+        let market2 = create_market(&admin_cap, BOB,utf8(b"Rain11"),utf8(b"Will it rain y?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
         ts::next_tx(&mut test, ADMIN);
         print(&market);
         print(&market2);
         {
             let market_id1 =  object::id_from_address(market);
-            let mut market1 = ts::take_from_sender_by_id<Market>(&mut test, market_id1);
+            let mut market1 = ts::take_from_sender_by_id<Market>(&test, market_id1);
             assert!(market1.description == utf8(b"Will it rain tomorrow?"));
             print(&market1.start_time);
             mint(&admin_cap, &mut market1, ALICE, 100, BOB, 200);
@@ -223,15 +227,15 @@ module sweepstake::conditional_market {
             let bob_balance = check_no_balance(&market1, BOB);
             assert!(alice_balance == 100);
             assert!(bob_balance == 200);
-            ts::return_to_sender(&mut test,market1);
+            ts::return_to_sender(&test,market1);
         };
         ts::next_tx(&mut test, ADMIN);
         {
             let market_id1 =  object::id_from_address(market);
-            let mut market1 = ts::take_from_address_by_id<Market>(&mut test,ADMIN, market_id1);
+            let market1 = ts::take_from_address_by_id<Market>(&test,ADMIN, market_id1);
 
 
-            ts::return_to_sender(&mut test,market1);
+            ts::return_to_sender(&test,market1);
 
         };
 
