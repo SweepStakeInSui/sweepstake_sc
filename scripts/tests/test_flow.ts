@@ -1,14 +1,6 @@
-import { createAppConfig } from '../src/config'
-import { createMarket } from '../src/contractsCaller/conditionalMarket/createMarket'
-import {
-  checkMarketInfo,
-  checkNoBalance,
-  checkYesBalance
-} from "../src/contractsCaller/conditionalMarket/getInforMarket";
-import { mintToken } from "../src/contractsCaller/conditionalMarket/mintToken";
-import { deposit } from "../src/contractsCaller/sweepstake/deposit";
-import { newTreasury } from "../src/contractsCaller/sweepstake/newTreasury";
-import { withdraw } from "../src/contractsCaller/sweepstake/withdraw";
+import { createAppConfig } from '../src/config';
+import { deposit } from '../src/contractsCaller/sweepstake/deposit';
+import { newTreasury } from '../src/contractsCaller/sweepstake/newTreasury';
 
 const test = async () => {
   const config = createAppConfig()
@@ -17,7 +9,7 @@ const test = async () => {
   // console.log('sender',sender)
   //
   const sweepstake = config.objectSweepStakeSui
-  await deposit(config, sweepstake, sender, '0x2::sui::SUI', '110000')
+  // await deposit(config, sweepstake, sender, '0x2::sui::SUI', '10000')
   // await withdraw(config, sweepstake, sender, '0x2::sui::SUI', '1000')
   // await newTreasury(
   //   config,

@@ -27,7 +27,8 @@
 		"typescript": "^5.5.4",
 		"typescript-eslint": "^8.0.0",
 		"vitest": "^2.0.5",
-		"@shinami/clients": "^0.9.3"
+		"@shinami/clients": "^0.9.3",
+		"globals": "15.8.0"
 	},
 	"dependencies": {
 		"@mysten/dapp-kit": "^0.14.20",

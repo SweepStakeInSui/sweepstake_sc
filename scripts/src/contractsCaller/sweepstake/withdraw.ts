@@ -13,14 +13,12 @@ export async function withdraw(
   const admin = config.admin
   const adminCap = config.adminCapSweepTake
   const module_address = config.moduleAddress
-  const coin_name = coin_type.split('::').pop() || ''
   const tx = new Transaction()
   tx.moveCall({
     typeArguments: [coin_type],
     arguments: [
       tx.object(adminCap),
       tx.object(sweepstake_id),
-      tx.pure.string(coin_name),
       tx.pure.u64(amount),
       tx.pure.address(user),
     ],
