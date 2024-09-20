@@ -8,7 +8,7 @@ export async function newTreasury(config: AppConfig, coin_type: string) {
   const module_address = config.moduleAddress
 
   const coinName = coin_type.split('::').pop() || ''
-
+  console.log('coinName', coinName);
   const tx = new Transaction()
 
   tx.moveCall({
