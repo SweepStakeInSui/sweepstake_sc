@@ -5,19 +5,14 @@ module sweepstake::conditional_market {
     use sui::object::uid_to_inner;
     use sui::vec_map;
     use sui::vec_map::VecMap;
-
-
     #[test_only]
     use std::string::utf8;
+
+
     #[test_only]
     use sui::test_scenario as ts;
     #[test_only]
     use sui::test_utils::destroy;
-    #[test_only]
-    use sui::tx_context::epoch_timestamp_ms;
-    #[test_only]
-    use std::debug::print;
-
 
     // Bet object
     public struct Market has key, store {
@@ -136,7 +131,7 @@ module sweepstake::conditional_market {
         if (!market.yes_users.contains(&user_yes)) {
             market.yes_users.insert(user_yes, amount_yes);
         } else {
-            let balance = market.yes_users.get_idx(&user_yes);
+            let balance = *market.yes_users.get(&user_yes);
             let new_balance = balance + amount_yes;
             market.yes_users.remove(&user_yes);
             market.yes_users.insert(user_yes, new_balance);
@@ -145,50 +140,57 @@ module sweepstake::conditional_market {
         if (!market.no_users.contains(&user_no)) {
             market.no_users.insert(user_no, amount_no);
         } else {
-            let balance = market.no_users.get_idx(&user_no);
+            let balance = *market.no_users.get(&user_no);
             let new_balance = balance + amount_no;
             market.no_users.remove(&user_no);
             market.no_users.insert(user_no, new_balance);
         };
     }
 
-    entry fun transfer_yes_token(_: &AdminCap, market: &mut Market, buyer: address, seller: address, amount: u64) {
-        assert!(
-            market.yes_users.contains(&seller) && market.yes_users.get_idx(&seller) >= amount,
-            ENotEnoughBalance
-        );
-        let balance = market.yes_users.get_idx(&seller);
-        let new_balance = balance - amount;
-        market.yes_users.remove(&seller);
-        market.yes_users.insert(seller, new_balance);
+    entry fun transfer_token(
+        _: &AdminCap,
+        market: &mut Market,
+        buyer: address,
+        seller: address,
+        amount: u64,
+        type_coin: bool
+    ) {
+        if (type_coin) {
+            let balance = check_yes_balance(market, seller);
+            assert!(
+                balance >= amount, ENotEnoughBalance
+            );
+            let new_balance = balance - amount;
+            market.yes_users.remove(&seller);
+            market.yes_users.insert(seller, new_balance);
 
-        if (!market.yes_users.contains(&buyer)) {
-            market.yes_users.insert(buyer, amount);
+            if (!market.yes_users.contains(&buyer)) {
+                market.yes_users.insert(buyer, amount);
+            } else {
+                let balance = market.yes_users.get_idx(&buyer);
+                let new_balance = balance + amount;
+                market.yes_users.remove(&buyer);
+                market.yes_users.insert(buyer, new_balance);
+            };
         } else {
-            let balance = market.yes_users.get_idx(&buyer);
-            let new_balance = balance + amount;
-            market.yes_users.remove(&buyer);
-            market.yes_users.insert(buyer, new_balance);
-        };
+            let balance = check_no_balance(market, seller);
+            assert!(
+                balance >= amount, ENotEnoughBalance
+            );
+            let new_balance = balance - amount;
+            market.no_users.remove(&seller);
+            market.no_users.insert(seller, new_balance);
+
+            if (!market.no_users.contains(&buyer)) {
+                market.no_users.insert(buyer, amount);
+            } else {
+                let balance = market.no_users.get_idx(&buyer);
+                let new_balance = balance + amount;
+                market.no_users.remove(&buyer);
+                market.no_users.insert(buyer, new_balance);
+            };
+        }
     }
-
-    entry fun transfer_no_token(_: &AdminCap, market: &mut Market, buyer: address, seller: address, amount: u64) {
-        assert!(market.no_users.contains(&seller) && market.no_users.get_idx(&seller) >= amount, ENotEnoughBalance);
-        let balance = market.no_users.get_idx(&seller);
-        let new_balance = balance - amount;
-        market.no_users.remove(&seller);
-        market.no_users.insert(seller, new_balance);
-
-        if (!market.no_users.contains(&buyer)) {
-            market.no_users.insert(buyer, amount);
-        } else {
-            let balance = market.no_users.get_idx(&buyer);
-            let new_balance = balance + amount;
-            market.no_users.remove(&buyer);
-            market.no_users.insert(buyer, new_balance);
-        };
-    }
-
 
     // === Tests ===
     #[test_only] const ADMIN: address = @0xAD;
@@ -210,33 +212,62 @@ module sweepstake::conditional_market {
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
         let block_time = ts::ctx(&mut test).epoch_timestamp_ms();
-        print(&block_time);
 
-        let market = create_market(&admin_cap, ALICE, utf8(b"Rain"), utf8(b"Will it rain tomorrow?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
-        let market2 = create_market(&admin_cap, BOB,utf8(b"Rain11"),utf8(b"Will it rain y?"), utf8(b"yes or no"), block_time + 1, block_time + 2000, ts::ctx(&mut test));
+        let market = create_market(
+            &admin_cap,
+            ALICE,
+            utf8(b"Rain"),
+            utf8(b"Will it rain tomorrow?"),
+            utf8(b"yes or no"),
+            block_time + 1,
+            block_time + 2000,
+            ts::ctx(&mut test)
+        );
+        let market2 = create_market(
+            &admin_cap,
+            BOB,
+            utf8(b"Rain11"),
+            utf8(b"Will it rain y?"),
+            utf8(b"yes or no"),
+            block_time + 1,
+            block_time + 2000,
+            ts::ctx(&mut test)
+        );
         ts::next_tx(&mut test, ADMIN);
-        print(&market);
-        print(&market2);
         {
-            let market_id1 =  object::id_from_address(market);
+            let market_id1 = object::id_from_address(market);
+            let market_id2 = object::id_from_address(market2);
             let mut market1 = ts::take_from_sender_by_id<Market>(&test, market_id1);
             assert!(market1.description == utf8(b"Will it rain tomorrow?"));
-            print(&market1.start_time);
+            let market2 = ts::take_from_sender_by_id<Market>(&test, market_id2);
+            assert!(market2.description == utf8(b"Will it rain y?"));
+
             mint(&admin_cap, &mut market1, ALICE, 100, BOB, 200);
             let alice_balance = check_yes_balance(&market1, ALICE);
             let bob_balance = check_no_balance(&market1, BOB);
             assert!(alice_balance == 100);
             assert!(bob_balance == 200);
-            ts::return_to_sender(&test,market1);
+
+            ts::return_to_sender(&test, market1);
+            destroy(market2);
         };
         ts::next_tx(&mut test, ADMIN);
         {
-            let market_id1 =  object::id_from_address(market);
-            let market1 = ts::take_from_address_by_id<Market>(&test,ADMIN, market_id1);
-
-
-            ts::return_to_sender(&test,market1);
-
+            let market_id1 = object::id_from_address(market);
+            let mut market1 = ts::take_from_address_by_id<Market>(&test, ADMIN, market_id1);
+            let alice_balance = check_yes_balance(&market1, ALICE);
+            let bob_balance = check_no_balance(&market1, BOB);
+            assert!(alice_balance == 100);
+            assert!(bob_balance == 200);
+            transfer_token(&admin_cap, &mut market1, BOB, ALICE, 60, true);
+            let alice_balance = check_yes_balance(&market1, ALICE);
+            assert!(alice_balance == 40);
+            mint(&admin_cap, &mut market1, ALICE, 100, BOB, 200);
+            let alice_balance = check_yes_balance(&market1, ALICE);
+            let bob_balance = check_no_balance(&market1, BOB);
+            assert!(alice_balance == 140);
+            assert!(bob_balance == 400);
+            ts::return_to_sender(&test, market1);
         };
 
         destroy(admin_cap);

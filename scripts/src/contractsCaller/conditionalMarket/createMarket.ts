@@ -30,10 +30,11 @@ export async function createMarket(
     target: `${module_address}::conditional_market::create_market`,
   })
   tx.setGasBudget(10000000)
-  const txb = await client.signAndExecuteTransaction({
+  let txb = await client.signAndExecuteTransaction({
     signer: admin,
     transaction: tx,
   })
+  txb = await client.waitForTransaction(txb)
   const events = await client.queryEvents({
     query: {
       Transaction: txb.digest,
