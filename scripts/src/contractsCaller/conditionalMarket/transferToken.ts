@@ -6,8 +6,9 @@ import { AppConfig } from '../../config'
 export async function transfer_token(
   config: AppConfig,
   market_id: string,
-  buyer: string,
-  seller: string,
+  order_id: string,
+  maker: string,
+  taker: string,
   amount: string,
   type_coin: boolean
 ) {
@@ -22,18 +23,30 @@ export async function transfer_token(
     arguments: [
       tx.object(adminCap),
       tx.object(market_id),
-      tx.pure.address(buyer),
-      tx.pure.address(seller),
+      tx.pure.string(order_id),
+      tx.pure.address(maker),
+      tx.pure.u64(0),
+      tx.pure.address(taker),
       tx.pure.u64(amount),
-      tx.pure.bool(type_coin)
+      tx.pure.bool(type_coin),
+      // 1 = Transfer
+      tx.pure.u64(1)
     ],
-    target: `${module_address}::conditional_market::transfer_token`,
+    target: `${module_address}::conditional_market::execute_order`,
   })
   tx.setGasBudget(10000000)
-  const submittedTx = await client.signAndExecuteTransaction({
+  let submittedTx = await client.signAndExecuteTransaction({
     signer: admin,
     transaction: tx,
   })
-  await client.waitForTransaction(submittedTx)
+  submittedTx = await client.waitForTransaction(submittedTx)
+
+  const events = await client.queryEvents({
+    query: {
+      Transaction: submittedTx.digest,
+    },
+  })
+
+  console.log('Transfer', events.data[0].parsedJson) // Get the latest event
 }
 
