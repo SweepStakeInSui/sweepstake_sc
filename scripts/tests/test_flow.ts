@@ -11,16 +11,17 @@ import {
   checkYesBalance,
 } from '../src/contractsCaller/conditionalMarket/getInforMarket';
 import { transfer_token } from '../src/contractsCaller/conditionalMarket/transferToken';
-import { aw } from 'vitest/dist/chunks/reporters.C_zwCd4j';
 
 const test = async () => {
   const config = createAppConfig()
 
   const sender = config.user.toSuiAddress()
   const admin = config.admin.toSuiAddress()
-  // console.log('sender',sender)
-  //
+  console.log('sender',sender)
+  console.log('admin',admin)
   const sweepstake = config.objectSweepStakeSui
+  const shinami = config.shinamiClient
+     shinami.getRpcApiVersion()
   // await deposit(config, sweepstake, sender, '0x2::sui::SUI', '10000')
   // await withdraw(config, sweepstake, sender, '0x2::sui::SUI', '1000')
   // await newTreasury(
@@ -43,9 +44,10 @@ const test = async () => {
   // //   '0xea10912247c015ead590e481ae8545ff1518492dee41d6d03abdad828c1d2bde::usdc::USDC',
   // //   '100000'
   // // )
-
+  // //
   // await createMarket(
   //   config,
+  //   '1',
   //   sender,
   //   'Rain',
   //   'Will it rain tomorrow?',
@@ -53,17 +55,20 @@ const test = async () => {
   //   Date.now().toString(),
   //   (Date.now() + 1000).toString()
   // )
-
-  const market_test = '0xd9e4660851dd14c352d63112347839e754dc744dd61897597560f49a1ef2f866'
-  await mintToken(config, market_test, sender, '1000', sender, '0')
-
   //
+  const market_test = '0x8f0c61785caeb360e965e92d7c9d97da320221b7b4df3c1894acc24c1542b9fe'
+  // await mintToken(config, market_test, '2', admin, '100', sender, '100')
+  //
+  // //
+  // await checkYesBalance(config, market_test, sender)
+  // await checkNoBalance(config, market_test, sender)
+  // await checkMarketInfo(config, market_test)
+
+  await checkYesBalance(config, market_test, admin)
   await checkYesBalance(config, market_test, sender)
-  await checkNoBalance(config, market_test, sender)
-  await checkMarketInfo(config, market_test)
+  // //
+  await transfer_token(config, market_test,'3', admin, sender, '10', true)
 
-  //
-  await transfer_token(config, market_test, admin, sender, '100', true)
   await checkYesBalance(config, market_test, admin);
   await checkYesBalance(config, market_test, sender);
 }

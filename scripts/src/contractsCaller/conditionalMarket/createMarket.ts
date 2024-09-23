@@ -3,6 +3,7 @@ import { AppConfig } from '../../config';
 
 export async function createMarket(
   config: AppConfig,
+  id: string,
   creator: string,
   name: string,
   description: string,
@@ -20,6 +21,7 @@ export async function createMarket(
   tx.moveCall({
     arguments: [
       tx.object(adminCap),
+      tx.pure.string(id),
       tx.pure.address(creator),
       tx.pure.string(name),
       tx.pure.string(description),

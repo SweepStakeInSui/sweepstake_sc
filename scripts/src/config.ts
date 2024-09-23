@@ -22,11 +22,11 @@ export class EnvConfig {
     this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
     this.shinamiPrivateKey = 'sui_testnet_0e45dbbb403f380943036c9bc168f895'
 
-    this.moduleAddress = '0x23db3e2dbb0b70af5add9b35f05c9331b27e45ed3f69a977194b2c88af3c10f7'
-    this.adminCapSweepTake = '0x07ca43c3fcd6418bc4263ef064241353caac5237240230a052cb99baa5596036'
-    this.adminCapConditional = '0x62fc05d831210fd95f04c464dca3ef71bcb939d9cef321dd05186ecce629843d'
+    this.moduleAddress = '0x35e1e64ef2ef78b4ff4582d307afcb95913616abfe8b6a42a7fc30d864f025a'
+    this.adminCapSweepTake = '0xd9283ceaa0280433a0df326a575135693b0dd915759682752f0f071be1744ff2'
+    this.adminCapConditional = '0x6c2b67414c12f6bc8e4ebbdad5e8a5dd98b41f9a6cd3ca5d5fd4b36cabe0abfe'
     // This is default treasury of sweepstake
-    this.objectSweepStakeSui = '0x4698043cf8398f78b05b6231e4cc0508b64a9941ccef2f1b2150980014081e33'
+    this.objectSweepStakeSui = '0xe963c8760a403b6e044b2ffaea0f69397610a21bcadabaa7170b8f137a7323fe'
 
     // For testing purposes
     this.userPrivateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
