@@ -10,7 +10,7 @@ export class EnvConfig {
   network: 'testnet' | 'mainnet' | 'devnet' | 'localnet'
   privateKey: string
   moduleAddress: string
-  adminCapSweepTake: string
+  adminCapSweepStake: string
   adminCapConditional: string
   objectSweepStakeSui: string
   userPrivateKey: string
@@ -22,11 +22,11 @@ export class EnvConfig {
     this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
     this.shinamiPrivateKey = 'sui_testnet_0e45dbbb403f380943036c9bc168f895'
 
-    this.moduleAddress = '0x35e1e64ef2ef78b4ff4582d307afcb95913616abfe8b6a42a7fc30d864f025a'
-    this.adminCapSweepTake = '0xd9283ceaa0280433a0df326a575135693b0dd915759682752f0f071be1744ff2'
-    this.adminCapConditional = '0x6c2b67414c12f6bc8e4ebbdad5e8a5dd98b41f9a6cd3ca5d5fd4b36cabe0abfe'
+    this.moduleAddress = '0x8644f7be18e55244cb98b19677aeeed59d681fed8beb60fe4c78052da6f3e294'
+    this.adminCapSweepStake = '0x3b7258fee86055faa8009c1c31956249e504a815cac3d3e9c3ae377a549f5cd9'
+    this.adminCapConditional = '0xc4925f3a45930780bc1c537d49a3a4076603a639a96c649e469331060f2350dc'
     // This is default treasury of sweepstake
-    this.objectSweepStakeSui = '0xe963c8760a403b6e044b2ffaea0f69397610a21bcadabaa7170b8f137a7323fe'
+    this.objectSweepStakeSui = '0xdd5dae0e5561788d898b52eb939602939fa3d32e0971a6fc853fe19ff6e98e8b'
 
     // For testing purposes
     this.userPrivateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
@@ -61,7 +61,7 @@ export class AppConfig {
     this.moduleAddress = config.moduleAddress
     this.admin = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.privateKey).secretKey)
     this.user = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.userPrivateKey).secretKey)
-    this.adminCapSweepTake = config.adminCapSweepTake
+    this.adminCapSweepTake = config.adminCapSweepStake
     this.adminCapConditional = config.adminCapConditional
     this.objectSweepStakeSui = config.objectSweepStakeSui
     this.shinamiClient = createSuiClient(config.shinamiPrivateKey)
