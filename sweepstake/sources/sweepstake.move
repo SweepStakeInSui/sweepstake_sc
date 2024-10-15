@@ -45,6 +45,7 @@ module sweepstake::sweepstake {
 
     // Withdraw event
     public struct WithdrawEvent has copy, drop {
+        withdraw_id: String,
         owner: address,
         coin: String,
         amount: u64,
@@ -96,6 +97,7 @@ module sweepstake::sweepstake {
     entry fun withdraw<T>(
         _: &AdminCap,
         treasury: &mut Treasury<T>,
+        withdraw_id: String,
         amount: u64,
         to: address,
         ctx: &mut TxContext
@@ -108,6 +110,7 @@ module sweepstake::sweepstake {
         public_transfer(coin, to);
 
         emit(WithdrawEvent {
+            withdraw_id,
             owner: to,
             coin: name,
             amount,
@@ -199,7 +202,7 @@ module sweepstake::sweepstake {
         ts::next_tx(&mut test, ADMIN);
         {
             let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
-            withdraw(&admin_cap, &mut treasury, 40, ALICE, ts::ctx(&mut test));
+            withdraw(&admin_cap, &mut treasury,utf8(b"123-abc"), 40, ALICE, ts::ctx(&mut test));
             assert!(treasury.balance.value() == 10);
 
             ts::return_shared(treasury);
