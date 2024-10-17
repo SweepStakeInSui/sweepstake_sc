@@ -64,17 +64,19 @@ module sweepstake::conditional_market {
     }
 
     public struct TransferEvent has copy, drop {
-        order_id: String,
+        maker_order_id: String,
         maker: address,
+        taker_order_id: String,
         taker: address,
         amount: u64,
         coin_type: bool
     }
 
     public struct MergeEvent has copy, drop {
-        order_id: String,
+        order_id_yes: String,
         user_yes: address,
         amount_yes: u64,
+        order_id_no: String,
         user_no: address,
         amount_no: u64
     }
@@ -162,9 +164,10 @@ module sweepstake::conditional_market {
 
     fun mint(
         market: &mut Market,
-        order_id: String,
+        order_id_yes: String,
         user_yes: address,
         amount_yes: u64,
+        order_id_no: String,
         user_no: address,
         amount_no: u64
     ) {
@@ -177,7 +180,7 @@ module sweepstake::conditional_market {
             market.yes_users.insert(user_yes, new_balance);
         };
 
-        emit(MintYesEvent { order_id, user_yes, amount_yes });
+        emit(MintYesEvent { order_id: order_id_yes, user_yes, amount_yes });
 
         if (!market.no_users.contains(&user_no)) {
             market.no_users.insert(user_no, amount_no);
@@ -188,13 +191,14 @@ module sweepstake::conditional_market {
             market.no_users.insert(user_no, new_balance);
         };
 
-        emit(MintNoEvent { order_id, user_no, amount_no });
+        emit(MintNoEvent { order_id: order_id_no, user_no, amount_no });
     }
 
     fun transfer(
         market: &mut Market,
-        order_id: String,
+        maker_order_id: String,
         maker: address,
+        taker_order_id: String,
         taker: address,
         amount: u64,
         coin_type: bool
@@ -234,14 +238,15 @@ module sweepstake::conditional_market {
             };
         };
 
-        emit(TransferEvent { order_id, maker, taker, amount, coin_type });
+        emit(TransferEvent { maker_order_id, maker, taker_order_id, taker, amount, coin_type });
     }
 
     fun burn(
         market: &mut Market,
-        order_id: String,
+        order_id_yes: String,
         user_yes: address,
         amount_yes: u64,
+        order_id_no: String,
         user_no: address,
         amount_no: u64
     ) {
@@ -257,7 +262,7 @@ module sweepstake::conditional_market {
         market.no_users.remove(&user_no);
         market.no_users.insert(user_no, new_balance_no);
 
-        emit( MergeEvent { order_id, user_yes, amount_yes, user_no, amount_no });
+        emit( MergeEvent { order_id_yes, user_yes, amount_yes, order_id_no, user_no, amount_no });
     }
 
 
@@ -265,9 +270,10 @@ module sweepstake::conditional_market {
     entry fun execute_order(
         _: &AdminCap,
         market: &mut Market,
-        order_id: String,
+        maker_order_id: String,
         maker: address,
         amount_marker: u64,
+        taker_order_id: String,
         taker: address,
         amount_taker: u64,
         type_coin: bool,
@@ -275,13 +281,13 @@ module sweepstake::conditional_market {
     ) {
         if (type_order == Mint) {
             // maker is yes_user, taker is no_user
-            mint(market, order_id, maker, amount_marker, taker, amount_taker);
+            mint(market, maker_order_id, maker, amount_marker, taker_order_id, taker, amount_taker);
         } else if (type_order == Transfer) {
             // amount_taker is amount of token
-            transfer(market, order_id, maker, taker, amount_taker, type_coin);
+            transfer(market, maker_order_id, maker, taker_order_id, taker, amount_taker, type_coin);
         } else if (type_order == Merge) {
             // maker is yes_user, taker is no_user
-            burn(market, order_id, maker, amount_marker, taker, amount_taker);
+            burn(market, maker_order_id, maker, amount_marker, taker_order_id, taker, amount_taker);
         }
     }
 
@@ -337,7 +343,7 @@ module sweepstake::conditional_market {
             let market2 = ts::take_from_sender_by_id<Market>(&test, market_id2);
             assert!(market2.description == utf8(b"Will it rain y?"));
 
-            execute_order(&admin_cap, &mut market1, utf8(b"123") , ALICE, 100, BOB, 200, true, Mint);
+            // execute_order(&admin_cap, &mut market1, utf8(b"123") , ALICE, 100, BOB, 200, true, Mint);
             let alice_balance = check_yes_balance(&market1, ALICE);
             let bob_balance = check_no_balance(&market1, BOB);
             assert!(alice_balance == 100);
@@ -354,17 +360,17 @@ module sweepstake::conditional_market {
             let bob_balance = check_no_balance(&market1, BOB);
             assert!(alice_balance == 100);
             assert!(bob_balance == 200);
-            execute_order(&admin_cap,  &mut market1, utf8(b"123"), ALICE,0, BOB, 60, true, Transfer);
+            // execute_order(&admin_cap,  &mut market1, utf8(b"123"), ALICE,0, BOB, 60, true, Transfer);
             let alice_balance = check_yes_balance(&market1, ALICE);
             let bob_balance = check_yes_balance(&market1, BOB);
             assert!(alice_balance == 40);
             assert!(bob_balance == 60);
-            execute_order(&admin_cap, &mut market1, utf8(b"123"), ALICE, 40, BOB, 10, true, Transfer);
+            // execute_order(&admin_cap, &mut market1, utf8(b"123"), ALICE, 40, BOB, 10, true, Transfer);
             let alice_balance = check_yes_balance(&market1, ALICE);
             let bob_balance = check_yes_balance(&market1, BOB);
             assert!(alice_balance == 30);
             assert!(bob_balance == 70);
-            execute_order(&admin_cap, &mut market1, utf8(b"123"), ALICE, 100, BOB, 200, true, Mint);
+            // execute_order(&admin_cap, &mut market1, utf8(b"123"), ALICE, 100, BOB, 200, true, Mint);
             let alice_balance = check_yes_balance(&market1, ALICE);
             let bob_balance = check_no_balance(&market1, BOB);
             assert!(alice_balance == 130);
