@@ -1,261 +1,280 @@
 export const abi = [
     {
-        inputs: [],
-        stateMutability: "nonpayable",
-        type: "constructor",
+        "inputs": [],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
     },
     {
-        inputs: [],
-        name: "NotAdmin",
-        type: "error",
+        "inputs": [],
+        "name": "NotAdmin",
+        "type": "error"
     },
     {
-        anonymous: false,
-        inputs: [
+        "anonymous": false,
+        "inputs": [
             {
-                indexed: true,
-                internalType: "address",
-                name: "admin",
-                type: "address",
+                "indexed": true,
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
             },
             {
-                indexed: true,
-                internalType: "address",
-                name: "newAdminAddress",
-                type: "address",
-            },
+                "indexed": true,
+                "internalType": "address",
+                "name": "newAdminAddress",
+                "type": "address"
+            }
         ],
-        name: "NewAdmin",
-        type: "event",
+        "name": "NewAdmin",
+        "type": "event"
     },
     {
-        anonymous: false,
-        inputs: [
+        "anonymous": false,
+        "inputs": [
             {
-                indexed: true,
-                internalType: "bytes32",
-                name: "questionID",
-                type: "bytes32",
+                "indexed": true,
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
             },
             {
-                indexed: false,
-                internalType: "bytes",
-                name: "ancillaryData",
-                type: "bytes",
-            },
+                "indexed": false,
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            }
         ],
-        name: "QuestionInitialized",
-        type: "event",
+        "name": "QuestionInitialized",
+        "type": "event"
     },
     {
-        anonymous: false,
-        inputs: [
+        "anonymous": false,
+        "inputs": [
             {
-                indexed: true,
-                internalType: "address",
-                name: "admin",
-                type: "address",
+                "indexed": true,
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
             },
             {
-                indexed: true,
-                internalType: "address",
-                name: "removedAdmin",
-                type: "address",
-            },
+                "indexed": true,
+                "internalType": "address",
+                "name": "removedAdmin",
+                "type": "address"
+            }
         ],
-        name: "RemovedAdmin",
-        type: "event",
+        "name": "RemovedAdmin",
+        "type": "event"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "address",
-                name: "admin",
-                type: "address",
-            },
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            }
         ],
-        name: "addAdmin",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
+        "name": "addAdmin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "address",
-                name: "",
-                type: "address",
-            },
+                "internalType": "address",
+                "name": "",
+                "type": "address"
+            }
         ],
-        name: "admins",
-        outputs: [
+        "name": "admins",
+        "outputs": [
             {
-                internalType: "uint256",
-                name: "",
-                type: "uint256",
-            },
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
         ],
-        stateMutability: "view",
-        type: "function",
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "bytes32",
-                name: "questionID",
-                type: "bytes32",
-            },
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
         ],
-        name: "getSettledData",
-        outputs: [
+        "name": "getSateData",
+        "outputs": [
             {
-                internalType: "int256",
-                name: "",
-                type: "int256",
-            },
+                "internalType": "enum IOptimisticOracleV2.State",
+                "name": "",
+                "type": "uint8"
+            }
         ],
-        stateMutability: "view",
-        type: "function",
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "address",
-                name: "addr",
-                type: "address",
-            },
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
         ],
-        name: "isAdmin",
-        outputs: [
+        "name": "getSettledData",
+        "outputs": [
             {
-                internalType: "bool",
-                name: "",
-                type: "bool",
-            },
+                "internalType": "int256",
+                "name": "",
+                "type": "int256"
+            }
         ],
-        stateMutability: "view",
-        type: "function",
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        inputs: [],
-        name: "liveness",
-        outputs: [
+        "inputs": [
             {
-                internalType: "uint256",
-                name: "",
-                type: "uint256",
-            },
+                "internalType": "address",
+                "name": "addr",
+                "type": "address"
+            }
         ],
-        stateMutability: "view",
-        type: "function",
+        "name": "isAdmin",
+        "outputs": [
+            {
+                "internalType": "bool",
+                "name": "",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [],
+        "name": "liveness",
+        "outputs": [
             {
-                internalType: "bytes32",
-                name: "",
-                type: "bytes32",
-            },
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
         ],
-        name: "questions",
-        outputs: [
-            {
-                internalType: "string",
-                name: "creator",
-                type: "string",
-            },
-            {
-                internalType: "string",
-                name: "marketID",
-                type: "string",
-            },
-            {
-                internalType: "bytes",
-                name: "ancillaryData",
-                type: "bytes",
-            },
-            {
-                internalType: "bool",
-                name: "resolved",
-                type: "bool",
-            },
-        ],
-        stateMutability: "view",
-        type: "function",
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "address",
-                name: "admin",
-                type: "address",
-            },
+                "internalType": "bytes32",
+                "name": "",
+                "type": "bytes32"
+            }
         ],
-        name: "removeAdmin",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
+        "name": "questions",
+        "outputs": [
+            {
+                "internalType": "string",
+                "name": "creator",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "marketID",
+                "type": "string"
+            },
+            {
+                "internalType": "bytes",
+                "name": "ancillaryData",
+                "type": "bytes"
+            },
+            {
+                "internalType": "bool",
+                "name": "resolved",
+                "type": "bool"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
     },
     {
-        inputs: [],
-        name: "renounceAdmin",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "admin",
+                "type": "address"
+            }
+        ],
+        "name": "removeAdmin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
-        inputs: [
-            {
-                internalType: "string",
-                name: "creator",
-                type: "string",
-            },
-            {
-                internalType: "string",
-                name: "marketID",
-                type: "string",
-            },
-            {
-                internalType: "string",
-                name: "ancillaryString",
-                type: "string",
-            },
-        ],
-        name: "requestData",
-        outputs: [
-            {
-                internalType: "bytes32",
-                name: "questionID",
-                type: "bytes32",
-            },
-        ],
-        stateMutability: "nonpayable",
-        type: "function",
+        "inputs": [],
+        "name": "renounceAdmin",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "uint256",
-                name: "_liveness",
-                type: "uint256",
+                "internalType": "string",
+                "name": "creator",
+                "type": "string"
             },
+            {
+                "internalType": "string",
+                "name": "marketID",
+                "type": "string"
+            },
+            {
+                "internalType": "string",
+                "name": "ancillaryString",
+                "type": "string"
+            }
         ],
-        name: "setLiveness",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
+        "name": "requestData",
+        "outputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
     {
-        inputs: [
+        "inputs": [
             {
-                internalType: "bytes32",
-                name: "questionID",
-                type: "bytes32",
-            },
+                "internalType": "uint256",
+                "name": "_liveness",
+                "type": "uint256"
+            }
         ],
-        name: "settleRequest",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
+        "name": "setLiveness",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
     },
+    {
+        "inputs": [
+            {
+                "internalType": "bytes32",
+                "name": "questionID",
+                "type": "bytes32"
+            }
+        ],
+        "name": "settleRequest",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
 ] as const;
