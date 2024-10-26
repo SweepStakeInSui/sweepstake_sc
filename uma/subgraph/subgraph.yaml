@@ -1,0 +1,32 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: SweepstakeUma
+    network: polygon-amoy
+    source:
+      address: "0xa3bc296E9d18DB4c15700f80849ec518cFdb99e6"
+      abi: SweepstakeUma
+      startBlock: 13570762
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - NewAdmin
+        - QuestionInitialized
+        - RemovedAdmin
+      abis:
+        - name: SweepstakeUma
+          file: ./abis/SweepstakeUma.json
+      eventHandlers:
+        - event: NewAdmin(indexed address,indexed address)
+          handler: handleNewAdmin
+        - event: QuestionInitialized(indexed bytes32,bytes)
+          handler: handleQuestionInitialized
+        - event: RemovedAdmin(indexed address,indexed address)
+          handler: handleRemovedAdmin
+      file: ./src/sweepstake-uma.ts

@@ -1,0 +1,26 @@
+type NewAdmin @entity(immutable: true) {
+  id: Bytes!
+  admin: Bytes! # address
+  newAdminAddress: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type QuestionInitialized @entity(immutable: true) {
+  id: Bytes!
+  questionID: Bytes! # bytes32
+  ancillaryData: Bytes! # bytes
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type RemovedAdmin @entity(immutable: true) {
+  id: Bytes!
+  admin: Bytes! # address
+  removedAdmin: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
