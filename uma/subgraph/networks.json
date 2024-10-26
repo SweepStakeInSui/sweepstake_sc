@@ -3,6 +3,9 @@
     "SweepstakeUma": {
       "address": "0xa3bc296E9d18DB4c15700f80849ec518cFdb99e6",
       "startBlock": 13570762
+    },
+    "OptimisticOracleV2": {
+      "address": "0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968"
     }
   }
 }
