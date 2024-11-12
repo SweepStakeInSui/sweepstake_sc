@@ -5,6 +5,8 @@ module sweepstake::conditional_market {
     use sui::object::uid_to_inner;
     use sui::vec_map;
     use sui::vec_map::VecMap;
+    #[test_only]
+    use std::debug::print;
 
     #[test_only]
     use std::string::utf8;
@@ -19,6 +21,8 @@ module sweepstake::conditional_market {
     public struct Market has key, store {
         /// Object ID
         id: UID,
+        /// Market id
+        market_id: String,
         /// Address of creator,
         creator: address,
         ///Name of the bet
@@ -31,8 +35,14 @@ module sweepstake::conditional_market {
         start_time: u64,
         /// End time of the bet
         end_time: u64,
+        /// Users who bet yes and their amount
         yes_users: VecMap<address, u64>,
+        /// Users who bet no and their amount
         no_users: VecMap<address, u64>,
+        /// isClaimed
+        isClaimed: bool,
+        /// winner of the bet default is false
+        winner: bool
     }
 
     public struct AdminCap has key {
@@ -43,12 +53,14 @@ module sweepstake::conditional_market {
     // Error codes
     const ENotEnoughBalance: u64 = 1001;
     const EInvalidTimeArg: u64 = 1002;
+    const EAlreadyClaimed: u64 = 1003;
+    const EWrongMarketId: u64 = 1004;
 
 
     // Events
     public struct NewMarketEvent has copy, drop {
         object_id: ID,
-        id: String
+        market_id: String
     }
 
     public struct MintYesEvent has copy, drop {
@@ -79,6 +91,10 @@ module sweepstake::conditional_market {
         amount_no: u64
     }
 
+    public struct ClaimEvent has copy, drop {
+        market_id: String,
+        winners: VecMap<address, u64>
+    }
 
 
     // Type of the order
@@ -111,10 +127,11 @@ module sweepstake::conditional_market {
         assert!(end_time > start_time, EInvalidTimeArg);
 
         let object_id = object::new(ctx);
-        emit(NewMarketEvent { object_id: uid_to_inner(&object_id), id });
+        emit(NewMarketEvent { object_id: uid_to_inner(&object_id), market_id :id });
         let address = object::uid_to_address(&object_id);
         let market = Market {
             id: object_id,
+            market_id: id,
             creator,
             name,
             description,
@@ -123,6 +140,8 @@ module sweepstake::conditional_market {
             end_time,
             yes_users: vec_map::empty(),
             no_users: vec_map::empty(),
+            isClaimed: false,
+            winner: false
         };
         transfer::transfer(market, ctx.sender());
         address
@@ -285,6 +304,33 @@ module sweepstake::conditional_market {
         }
     }
 
+    entry fun claim_reward(
+        _: &AdminCap,
+        market: &mut Market,
+        market_id: String,
+        winner: bool,
+        ctx: &TxContext,
+    ) {
+        assert!(
+            market.market_id == market_id, EWrongMarketId
+        );
+        assert!(
+            market.end_time < ctx.epoch_timestamp_ms(), EInvalidTimeArg
+        );
+        assert!(
+            market.isClaimed == false, EAlreadyClaimed
+        );
+
+        market.isClaimed = true;
+        if (winner) {
+            market.winner = true;
+            emit(ClaimEvent { market_id,  winners: market.yes_users });
+        } else {
+            market.winner = false;
+            emit(ClaimEvent { market_id,  winners: market.no_users });
+        }
+    }
+
     // === Tests ===
     #[test_only] const ADMIN: address = @0xAD;
     #[test_only] const ALICE: address = @0xA;
@@ -305,7 +351,6 @@ module sweepstake::conditional_market {
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
         let block_time = ts::ctx(&mut test).epoch_timestamp_ms();
-
         let market = create_market(
             &admin_cap,
             utf8(b"2"),
@@ -369,6 +414,9 @@ module sweepstake::conditional_market {
             let bob_balance = check_no_balance(&market1, BOB);
             assert!(alice_balance == 130);
             assert!(bob_balance == 400);
+            ts::later_epoch(&mut test, 2001, ADMIN);
+            claim_reward(&admin_cap, &mut market1, utf8(b"2"), true, ts::ctx(&mut test));
+
             ts::return_to_sender(&test, market1);
         };
 
