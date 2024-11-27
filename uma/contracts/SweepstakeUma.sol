@@ -64,7 +64,7 @@ contract SweepstakeUma is Auth {
         // Set the reward to 0 (so we dont have to fund it from this contract).
         uint256 reward = 0;
         bytes memory ancillaryData = bytes(ancillaryString);
-        questionID = keccak256(ancillaryData);
+        questionID = keccak256(bytes(marketID));
         // Make sure the question doesn't already exist.
         require(questions[questionID].ancillaryData.length == 0, "Question already exists");
 
