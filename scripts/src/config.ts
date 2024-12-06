@@ -16,20 +16,17 @@ export class EnvConfig {
   userPrivateKey: string
   shinamiPrivateKey: string
 
-  // I don't know why my env vars are not being read, so I set in this file :D ??
   constructor() {
-    this.network = 'testnet'
-    this.privateKey = 'suiprivkey1qqanr8rzh3uk2mkdprjz2gdledt5qx5c6692se559qeteza9qqduzgzn6y5'
-    this.shinamiPrivateKey = 'sui_testnet_0e45dbbb403f380943036c9bc168f895'
+    this.network = process.env.NETWORK as 'testnet' | 'mainnet' | 'devnet' | 'localnet'
+    this.privateKey = this.getEnvVarOrPanic('PRIVATE_KEY')
+    this.shinamiPrivateKey = this.getEnvVarOrPanic('SHINAMI_PRIVATE_KEY')
 
-    this.moduleAddress = '0x8644f7be18e55244cb98b19677aeeed59d681fed8beb60fe4c78052da6f3e294'
-    this.adminCapSweepStake = '0x3b7258fee86055faa8009c1c31956249e504a815cac3d3e9c3ae377a549f5cd9'
-    this.adminCapConditional = '0xc4925f3a45930780bc1c537d49a3a4076603a639a96c649e469331060f2350dc'
-    // This is default treasury of sweepstake
-    this.objectSweepStakeSui = '0xdd5dae0e5561788d898b52eb939602939fa3d32e0971a6fc853fe19ff6e98e8b'
+    this.moduleAddress = this.getEnvVarOrPanic('MODULE_ADDRESS')
+    this.adminCapSweepStake = this.getEnvVarOrPanic('ADMIN_CAP_SWEEPSTAKE')
+    this.adminCapConditional = this.getEnvVarOrPanic('ADMIN_CAP_CONDITIONAL')
+    this.objectSweepStakeSui = this.getEnvVarOrPanic('OBJECT_SWEEPSTAKE_SUI')
 
-    // For testing purposes
-    this.userPrivateKey = 'suiprivkey1qr37ll8uquagxc3hwwtd9remne7z2lfs2nczflqp0f5htrqn2tf6ylv00pp'
+    this.userPrivateKey = this.getEnvVarOrPanic('USER_PRIVATE_KEY')
   }
 
   private getEnvVar(key: string): string | undefined {
