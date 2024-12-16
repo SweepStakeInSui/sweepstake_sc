@@ -304,7 +304,6 @@ module sweepstake::conditional_market {
         market: &mut Market,
         market_id: String,
         winner: bool,
-        ctx: &TxContext,
     ) {
         assert!(
             market.market_id == market_id, EWrongMarketId
@@ -436,7 +435,7 @@ module sweepstake::conditional_market {
             assert!(alice_balance == 130);
             assert!(bob_balance == 400);
             ts::later_epoch(&mut test, 2001, ADMIN);
-            claim_reward(&admin_cap, &mut market1, utf8(b"2"), true, ts::ctx(&mut test));
+            claim_reward(&admin_cap, &mut market1, utf8(b"2"), true);
 
             ts::return_to_sender(&test, market1);
         };
