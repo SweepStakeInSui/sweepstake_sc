@@ -35,15 +35,22 @@ contract SweepstakeUma is Auth {
     mapping(bytes32 => QuestionData) public questions;
 
     uint256 public liveness;
+    uint256 public reward;
+
 
     constructor() {
         liveness = 30;
+        reward = 0;
     }
 
     // Set the liveness of the request. This is the time in seconds that the request will be live for.
     /// @param _liveness: liveness of the request
     function setLiveness(uint256 _liveness) public onlyAdmin {
         liveness = _liveness;
+    }
+
+    function setReward(uint256 _reward) public onlyAdmin {
+        reward = _reward;
     }
 
     // Submit a data request to the Optimistic oracle.
@@ -62,7 +69,6 @@ contract SweepstakeUma is Auth {
             0x9b4A302A548c7e313c2b74C461db7b84d3074A84
         );
         // Set the reward to 0 (so we dont have to fund it from this contract).
-        uint256 reward = 0;
         bytes memory ancillaryData = bytes(ancillaryString);
         questionID = keccak256(bytes(marketID));
         // Make sure the question doesn't already exist.
