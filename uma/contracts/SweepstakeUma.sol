@@ -36,11 +36,17 @@ contract SweepstakeUma is Auth {
 
     uint256 public liveness;
     uint256 public reward;
+    uint256 public bond;
+    IERC20 public bondCurrency;
 
 
     constructor() {
         liveness = 30;
-        reward = 0;
+        reward = 5;
+        bondCurrency = IERC20(
+            0x9b4A302A548c7e313c2b74C461db7b84d3074A84
+        );
+        bond = 100_000_000;
     }
 
     // Set the liveness of the request. This is the time in seconds that the request will be live for.
@@ -51,6 +57,14 @@ contract SweepstakeUma is Auth {
 
     function setReward(uint256 _reward) public onlyAdmin {
         reward = _reward;
+    }
+
+    function setBondCurrency(address erc20Address) public onlyAdmin {
+        bondCurrency = IERC20(erc20Address);
+    }
+
+    function setBond(uint256 _bond) public onlyAdmin {
+        bond = _bond;
     }
 
     // Submit a data request to the Optimistic oracle.
@@ -64,11 +78,7 @@ contract SweepstakeUma is Auth {
         string memory ancillaryString
     ) external onlyAdmin returns (bytes32 questionID) {
         requestTime = block.timestamp;
-        // USDC on Polygon Amoy
-        IERC20 bondCurrency = IERC20(
-            0x9b4A302A548c7e313c2b74C461db7b84d3074A84
-        );
-        // Set the reward to 0 (so we dont have to fund it from this contract).
+
         bytes memory ancillaryData = bytes(ancillaryString);
         questionID = keccak256(bytes(marketID));
         // Make sure the question doesn't already exist.
@@ -85,7 +95,7 @@ contract SweepstakeUma is Auth {
             reward
         );
         oo.setCustomLiveness(identifier, requestTime, ancillaryData, liveness);
-
+        oo.setBond(identifier, requestTime, ancillaryData, bond);
         emit QuestionInitialized(questionID, ancillaryData);
     }
 
