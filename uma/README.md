@@ -62,14 +62,9 @@ Important configuration notes:
 
 Two deployment methods are available:
 
-### 1. Using Hardhat Deploy
+### Using Ignition (Recommended)
 ```bash
-npx hardhat run --network <network-name> scripts/deploy.ts
-```
-
-### 2. Using Ignition (Recommended)
-```bash
-npx hardhat ignition deploy ignition/modules/MockToken.ts --network <network-name>
+npx hardhat ignition deploy ignition/modules/SweepStakeUma.ts --network <network-name>
 ```
 
 ## Usage Guide

@@ -7,6 +7,25 @@ Before deploying the smart contracts, ensure you have the following:
 - Sui CLI installed on your system
 - Access to a Sui network (testnet or mainnet)
 
+Install SuiCLi: 
+
+- Install suiup: 
+
+```bash
+curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
+```
+
+- Open the new terminal, then run : 
+
+```bash
+suiup install sui@testnet
+```
+
+- Check in the new terminal : 
+```bash
+sui 
+```
+
 ## Setup Instructions
 
 ### 1. Configure Sui Profile
@@ -44,6 +63,11 @@ To deploy your smart contract:
 
 ```bash
 sui move build
+```
+then run:
+
+```bash
+sui client publish --skip-dependency-verification 
 ```
 
 After deployment, make sure to save your contract's information from the deployment logs for future reference.
