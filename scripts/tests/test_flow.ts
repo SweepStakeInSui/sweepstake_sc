@@ -1,5 +1,5 @@
-import {createAppConfig} from '../src/config';
-import {newTreasury} from '../src/contractsCaller/sweepstake/newTreasury';
+import {createAppConfig} from '../src/config.js';
+import {newTreasury} from '../src/contractsCaller/sweepstake/newTreasury.js';
 
 const test = async () => {
     const config = createAppConfig()
@@ -8,3 +8,4 @@ const test = async () => {
         '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC'
     )
 }
+test()

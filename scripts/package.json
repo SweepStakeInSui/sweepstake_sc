@@ -4,7 +4,7 @@
 	"private": true,
 	"main": "dist/main.js",
 	"scripts": {
-		"test:flow": "ts-node --esm tests/test_flow.ts"
+		"test:flow": "NODE_OPTIONS=\"--loader ts-node/esm\" ts-node tests/test_flow.ts"
 	},
 	"type": "module",
 	"keywords": [],
