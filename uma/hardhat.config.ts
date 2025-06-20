@@ -14,9 +14,11 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
     },
     base: {
-      url: 'https://base.llamarpc.com',
+      url: 'https://base-rpc.publicnode.com',
       chainId: 8453,
       accounts: [PRIVATE_KEY],
+      gasPrice: "auto",
+      gas: "auto",
     }
   },
   // etherscan: {

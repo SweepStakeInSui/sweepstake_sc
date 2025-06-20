@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SweepstakeUma is Auth {
     // OO on Polygon Amoy
-    IOptimisticOracleV2 oo = IOptimisticOracleV2(0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968);
+    IOptimisticOracleV2 oo = IOptimisticOracleV2(0x880d041D67aaB3B062995d11d4aD9c1018A3b02f);
 
     // For now, sweepstake only supports YES/NO
     bytes32 identifier = bytes32("YES_OR_NO_QUERY");
@@ -42,11 +42,11 @@ contract SweepstakeUma is Auth {
 
     constructor() {
         liveness = 30;
-        reward = 5;
+        reward = 0;
         bondCurrency = IERC20(
             0x9b4A302A548c7e313c2b74C461db7b84d3074A84
         );
-        bond = 100_000_000;
+        bond = 0;
     }
 
     // Set the liveness of the request. This is the time in seconds that the request will be live for.
