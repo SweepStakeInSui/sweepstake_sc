@@ -21,7 +21,7 @@ export async function deposit(
     owner: sender,
     coinType: coin_type,
   })
-
+  console.log(user_coins_id)
   const gaslessTx = await buildGaslessTransaction(
     txb => {
       const first_coin = user_coins_id.data[0].coinObjectId
@@ -31,7 +31,7 @@ export async function deposit(
         }
       }
       const [coin] = txb.splitCoins(
-        first_coin, // Get from user
+        first_coin,
         [txb.pure.u64(amount)]
       )
       txb.moveCall({

@@ -1,11 +1,18 @@
 module sweepstake::sweepstake {
     use std::string::{String, utf8};
+    use std::vector::append;
     use sui::balance;
     use sui::balance::Balance;
+    use sui::bcs::to_bytes;
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::sui::SUI;
+    use sui::table;
     use sui::transfer::{public_transfer, share_object};
+    use sui::ed25519;
+    use sui::hash;
+    use sui::tx_context::{epoch_timestamp_ms, TxContext};
+    use sui::object;
 
     #[test_only]
     use sui::test_utils::{destroy};
@@ -14,7 +21,9 @@ module sweepstake::sweepstake {
 
 
     // Error codes
-    const EInsufficientBalanceAdmin: u64 = 1002;
+    const EInsufficientBalance: u64 = 1002;
+    const EDeadlineExpired: u64 = 1003;
+    const EInvalidAdminSig: u64 = 1004;
 
     // AdminCap object
     public struct AdminCap has key {
@@ -24,10 +33,12 @@ module sweepstake::sweepstake {
     // treasury object
     public struct Treasury<phantom T> has key {
         id: UID,
-        /// Balance of the treasury
+        /// Balance of the treasurysu
         balance: Balance<T>,
         /// Metadata of the crurrency
-        coin_name: String
+        coin_name: String,
+        /// Balance of users
+        user_balances: table::Table<address, u64>,
     }
 
 
@@ -49,6 +60,14 @@ module sweepstake::sweepstake {
         owner: address,
         coin: String,
         amount: u64,
+    }
+
+    public struct WithDrawData has copy, drop {
+        withdraw_id: String,
+        from: address,
+        amount: u64,
+        to: address,
+        deadline: u64,
     }
 
     // The treasury contract has SUI as default token
@@ -73,6 +92,7 @@ module sweepstake::sweepstake {
             id: object_id,
             balance: balance::zero<T>(),
             coin_name,
+            user_balances: table::new<address, u64>(ctx),
         };
 
         share_object(treasury);
@@ -81,11 +101,18 @@ module sweepstake::sweepstake {
     entry fun deposit<T>(
         treasury: &mut Treasury<T>,
         deposit: Coin<T>,
-        ctx:  &TxContext
+        ctx: &TxContext
     ) {
         let name = treasury.coin_name;
         let amount = deposit.value();
         coin::put(&mut treasury.balance, deposit);
+
+        if (!table::contains(&treasury.user_balances, ctx.sender())) {
+            table::add(&mut treasury.user_balances, ctx.sender(), 0);
+        };
+
+        let old_balance = table::remove(&mut treasury.user_balances, ctx.sender());
+        table::add(&mut treasury.user_balances, ctx.sender(), old_balance + amount);
 
         emit(DepositEvent {
             owner: ctx.sender(),
@@ -95,14 +122,33 @@ module sweepstake::sweepstake {
     }
 
     entry fun withdraw<T>(
-        _: &AdminCap,
         treasury: &mut Treasury<T>,
         withdraw_id: String,
         amount: u64,
         to: address,
+        deadline: u64,
+        admin_pk: vector<u8>,
+        admin_sig: vector<u8>,
         ctx: &mut TxContext
     ) {
-        assert!(treasury.balance.value() >= amount, EInsufficientBalanceAdmin);
+        let user_balance = table::borrow_mut(&mut treasury.user_balances, ctx.sender());
+        assert!(*user_balance >= amount, EInsufficientBalance);
+
+        let withdraw_data = WithDrawData {
+            withdraw_id,
+            from: ctx.sender(),
+            amount,
+            to,
+            deadline,
+        };
+
+        let byte_data = to_bytes(&withdraw_data);
+        let hash_data = hash::keccak256(&byte_data);
+        let ok = ed25519::ed25519_verify(&admin_sig, &admin_pk, &hash_data);
+        assert!(ok, EInvalidAdminSig);
+
+        *user_balance = *user_balance - amount;
+
         let name = treasury.coin_name;
         let withdraw = treasury.balance.split(amount);
 
@@ -117,6 +163,9 @@ module sweepstake::sweepstake {
         })
     }
 
+    public fun get_balance<T>(treasury: &Treasury<T>, owner: address): u64 {
+        *table::borrow(&treasury.user_balances, owner)
+    }
 
     // === Tests ===
     #[test_only] const ADMIN: address = @0xAD;
@@ -142,7 +191,7 @@ module sweepstake::sweepstake {
         //NOTE: With new MetadataCoin type, we can't test this function.
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
-        new_treasury<USDC>(&admin_cap,utf8(b"USDC") ,ts::ctx(&mut test));
+        new_treasury<USDC>(&admin_cap, utf8(b"USDC"), ts::ctx(&mut test));
         //
         //PLayer ALICE deposits 50 SUI
         {
@@ -183,7 +232,7 @@ module sweepstake::sweepstake {
         ts::next_tx(&mut test, ADMIN);
         let admin_cap = ts::take_from_sender<AdminCap>(&test);
 
-        new_treasury<SUI>(&admin_cap,utf8(b"SUI") ,ts::ctx(&mut test));
+        new_treasury<SUI>(&admin_cap, utf8(b"SUI"), ts::ctx(&mut test));
 
         //
         //PLayer ALICE deposits 50 SUI
@@ -202,7 +251,14 @@ module sweepstake::sweepstake {
         ts::next_tx(&mut test, ADMIN);
         {
             let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
-            withdraw(&admin_cap, &mut treasury,utf8(b"123-abc"), 40, ALICE, ts::ctx(&mut test));
+
+
+            let admin_key = ts::new_ed25519_private_key();
+            let pubkey = test_scenario::get_ed25519_public_key(&admin_key);
+            let sig = test_scenario::sign_ed25519(&admin_key, &msg);
+
+
+            withdraw(&mut treasury, utf8(b"123-abc"), 40, ALICE, ts::ctx(&mut test));
             assert!(treasury.balance.value() == 10);
 
             ts::return_shared(treasury);
