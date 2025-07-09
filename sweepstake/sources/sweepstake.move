@@ -11,7 +11,8 @@ module sweepstake::sweepstake {
     use sui::transfer::{public_transfer, share_object};
     use sui::ed25519;
     use sui::hash;
-    use sui::tx_context::{epoch_timestamp_ms};
+    use sui::tx_context::{epoch_timestamp_ms, TxContext};
+    use sui::object;
 
     #[test_only]
     use sui::test_utils::{destroy};
@@ -59,6 +60,14 @@ module sweepstake::sweepstake {
         owner: address,
         coin: String,
         amount: u64,
+    }
+
+    public struct WithDrawData has copy, drop {
+        withdraw_id: String,
+        from: address,
+        amount: u64,
+        to: address,
+        deadline: u64,
     }
 
     // The treasury contract has SUI as default token
@@ -122,14 +131,21 @@ module sweepstake::sweepstake {
         admin_sig: vector<u8>,
         ctx: &mut TxContext
     ) {
-        assert!(ctx.epoch_timestamp_ms() <= deadline, EDeadlineExpired);
-        let message = hash_withdraw_request(withdraw_id, amount, to, deadline);
-
-        let ok = ed25519::ed25519_verify(&admin_sig, &admin_pk, &message);
-        assert!(ok, EInvalidAdminSig);
-
-        let user_balance = table::borrow_mut(&mut treasury.user_balances, to);
+        let user_balance = table::borrow_mut(&mut treasury.user_balances, ctx.sender());
         assert!(*user_balance >= amount, EInsufficientBalance);
+
+        let withdraw_data = WithDrawData {
+            withdraw_id,
+            from: ctx.sender(),
+            amount,
+            to,
+            deadline,
+        };
+
+        let byte_data = to_bytes(&withdraw_data);
+        let hash_data = hash::keccak256(&byte_data);
+        let ok = ed25519::ed25519_verify(&admin_sig, &admin_pk, &hash_data);
+        assert!(ok, EInvalidAdminSig);
 
         *user_balance = *user_balance - amount;
 
@@ -150,22 +166,6 @@ module sweepstake::sweepstake {
     public fun get_balance<T>(treasury: &Treasury<T>, owner: address): u64 {
         *table::borrow(&treasury.user_balances, owner)
     }
-
-    fun hash_withdraw_request(
-        withdraw_id: String,
-        amount: u64,
-        to: address,
-        deadline: u64
-    ): vector<u8> {
-        let mut bytes = vector<u8>[];
-        append(&mut bytes, to_bytes(&withdraw_id));
-        append(&mut bytes, to_bytes(&amount));
-        append(&mut bytes, to_bytes(&to));
-        append(&mut bytes, to_bytes(&deadline));
-        hash::keccak256(&bytes)
-    }
-
-
 
     // === Tests ===
     #[test_only] const ADMIN: address = @0xAD;

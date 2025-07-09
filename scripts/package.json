@@ -4,7 +4,7 @@
 	"private": true,
 	"main": "dist/main.js",
 	"scripts": {
-		"test:flow": "NODE_OPTIONS=\"--loader ts-node/esm\" ts-node tests/test_flow.ts"
+		"test:flow": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' tests/test_flow.ts"
 	},
 	"type": "module",
 	"keywords": [],
@@ -37,6 +37,7 @@
 		"@polymarket/clob-client": "^4.10.0",
 		"commander": "^12.1.0",
 		"dotenv": "^16.4.5",
+		"js-sha3": "^0.9.3",
 		"tsup": "^8.2.4"
 	}
 }

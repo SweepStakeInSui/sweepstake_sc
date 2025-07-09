@@ -1,8 +1,10 @@
 import {Transaction} from '@mysten/sui/transactions'
 import * as console from 'node:console'
-import {AppConfig} from '../../config'
-import {toBigEndianBytes} from "@mysten/sui/zklogin";
-import {toBytes} from "@mysten/bcs";
+import {AppConfig} from '../../config.js'
+import { bcs } from '@mysten/sui/bcs';
+import { keccak256 } from 'js-sha3';
+import { fromHex } from '@mysten/bcs';
+
 
 export async function withdraw(
     config: AppConfig,
@@ -17,6 +19,12 @@ export async function withdraw(
     const adminCap = config.adminCapSweepTake
     const module_address = config.moduleAddress
 
+    const pub_key = admin_keypair.getPublicKey().toRawBytes();
+    const message = sign(sweepstake_id,user,amount, user, 1751211486000);
+    const signMessage = await admin_keypair.sign(message);
+
+
+
     const tx = new Transaction()
 
     tx.setSender(user);
@@ -27,6 +35,10 @@ export async function withdraw(
             tx.pure.string('withdraw'),
             tx.pure.u64(amount),
             tx.pure.address(user),
+            tx.pure.u64(1751211486000),
+            tx.pure(bcs.vector(bcs.u8()).serialize(pub_key).toBytes()),
+            tx.pure(bcs.vector(bcs.u8()).serialize(signMessage).toBytes()),
+
         ],
         target: `${module_address}::sweepstake::withdraw`,
     })
@@ -56,34 +68,17 @@ export async function withdraw(
     })
     // @ts-ignore
     console.log('Withdraw event', events.data[0].parsedJson)
-    //ex
-    // Withdraw event
-    // {
-    //   amount: '1000',
-    //   coin: 'SUI',
-    //   owner: '0x3be3b80978680228b4c472fd208e9503b92b22a6fefc7fd74c4651f2c302b544'
-    // }
 }
 
-export function hashWithdrawRequest(
-    withdrawid: string,
-    amount: string,
-    to: string,
-    deadline: string
-): string {
-    const encoder = new TextEncoder();
-    const withdrawIdBytes = encoder.encode(withdrawid);
-    const amountBytes = toBigEndianBytes(BigInt(amount), 8);
-    const toBytesVec = toBytes(to, 'address');
-    const deadlineBytes = toBigEndianBytes(BigInt(deadline), 8);
-
-    const combined = new Uint8Array(
-        withdrawIdBytes.length + amountBytes.length + toBytesVec.length + deadlineBytes.length
-    );
-    combined.set(withdrawIdBytes, 0);
-    combined.set(amountBytes, withdrawIdBytes.length);
-    combined.set(toBytesVec, withdrawIdBytes.length + amountBytes.length);
-    combined.set(deadlineBytes, withdrawIdBytes.length + amountBytes.length + toBytesVec.length);
-
-    return sha3_256(combined);
+function sign(withdrawid: string, from: string, amount: string, to: string, deadline: number) {
+  const withdrawData = bcs.struct('WithDrawData', {
+    withdraw_id: bcs.string(),
+    from: bcs.Address,
+    amount: bcs.u64(),
+    to: bcs.Address,
+    deadline: bcs.u64(),
+  });
+  const withDrawDataByte = withdrawData.serialize({withdraw_id: withdrawid,from: from, amount: amount, to: to, deadline: deadline }).toBytes();
+  const hash = keccak256(withDrawDataByte);
+  return fromHex(hash);
 }
