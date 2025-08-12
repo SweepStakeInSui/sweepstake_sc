@@ -4,7 +4,7 @@
 	"private": true,
 	"main": "dist/main.js",
 	"scripts": {
-		"test:flow": "node --import 'data:text/javascript,import { register } from \"node:module\"; import { pathToFileURL } from \"node:url\"; register(\"ts-node/esm\", pathToFileURL(\"./\"));' tests/test_flow.ts"
+		"test:flow": "node --loader ts-node/esm tests/test_flow.ts"
 	},
 	"type": "module",
 	"keywords": [],

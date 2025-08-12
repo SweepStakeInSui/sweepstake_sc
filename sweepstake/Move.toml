@@ -5,6 +5,5 @@ edition = "2024.beta"
 
 [dependencies]
 
-
 [addresses]
 sweepstake = "0x0"

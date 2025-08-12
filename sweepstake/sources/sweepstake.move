@@ -1,9 +1,9 @@
 module sweepstake::sweepstake {
     use std::string::{String, utf8};
-    use std::vector::append;
     use sui::balance;
     use sui::balance::Balance;
     use sui::bcs::to_bytes;
+    use sui::clock::{Clock, timestamp_ms};
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::sui::SUI;
@@ -11,19 +11,28 @@ module sweepstake::sweepstake {
     use sui::transfer::{public_transfer, share_object};
     use sui::ed25519;
     use sui::hash;
-    use sui::tx_context::{epoch_timestamp_ms, TxContext};
-    use sui::object;
+    use sui::object::uid_to_inner;
+    use sui::vec_map::VecMap;
+    use sui::vec_map;
+    use sweepstake::admin;
+    use sweepstake::admin::{Admin, is_admin, is_init, add_admin, num_of_admin};
 
-    #[test_only]
-    use sui::test_utils::{destroy};
-    #[test_only]
-    use sui::test_scenario as ts;
 
 
     // Error codes
     const EInsufficientBalance: u64 = 1002;
     const EDeadlineExpired: u64 = 1003;
     const EInvalidAdminSig: u64 = 1004;
+    const ENotEnoughBalance: u64 = 1005;
+    const EInvalidTimeArg: u64 = 1006;
+    const EAlreadyClaimed: u64 = 1007;
+    const EWrongMarketId: u64 = 1008;
+    const ENotEnoughAdmin: u64 = 1009;
+
+    // Type of the order
+    const Mint: u64 = 0;
+    const Transfer: u64 = 1;
+    const Merge: u64 = 2;
 
     // AdminCap object
     public struct AdminCap has key {
@@ -39,8 +48,11 @@ module sweepstake::sweepstake {
         coin_name: String,
         /// Balance of users
         user_balances: table::Table<address, u64>,
+        /// Admin
+        admin: Admin,
+        /// pubkey
+        pubkey: vector<u8>,
     }
-
 
     // New treasury event
     public struct NewTreasuryEvent has copy, drop {
@@ -85,15 +97,25 @@ module sweepstake::sweepstake {
         let object_id = object::new(ctx);
         // Emit new treasury's id event
         emit(NewTreasuryEvent {
-            id: object::uid_to_inner(&object_id),
+            id: uid_to_inner(&object_id),
         });
+
+        let admin = admin::create_admin(ctx);
+        // Init the contract balance
+        let mut user_balances = table::new<address, u64>(ctx);
+        table::add(&mut user_balances, @sweepstake, 0);
+
+
         // Share the treasury object
         let treasury = Treasury<T> {
             id: object_id,
             balance: balance::zero<T>(),
             coin_name,
-            user_balances: table::new<address, u64>(ctx),
+            user_balances,
+            admin,
+            pubkey: ctx.sender().to_bytes(),
         };
+
 
         share_object(treasury);
     }
@@ -163,108 +185,421 @@ module sweepstake::sweepstake {
         })
     }
 
-    public fun get_balance<T>(treasury: &Treasury<T>, owner: address): u64 {
-        *table::borrow(&treasury.user_balances, owner)
+    //===================MARKET ===================//
+
+    public struct Market has key, store {
+        /// Object ID
+        id: UID,
+        /// Market id
+        market_id: String,
+        /// Address of creator,
+        creator: address,
+        ///Name of the bet
+        name: String,
+        /// Conditions of the bet
+        conditions: String,
+        /// Start time of the bet
+        start_time: u64,
+        /// End time of the bet
+        end_time: u64,
+        /// Users who bet yes and their amount
+        yes_users: VecMap<address, u64>,
+        /// Users who bet no and their amount
+        no_users: VecMap<address, u64>,
+        /// isClaimed
+        isClaimed: bool,
+        /// winner of the bet default is false
+        winner: bool,
     }
 
-    // === Tests ===
-    #[test_only] const ADMIN: address = @0xAD;
-    #[test_only] const ALICE: address = @0xA;
-
-    #[test_only]
-    public struct USDC has drop {}
-
-    #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx);
+    // Events
+    public struct NewMarketEvent has copy, drop {
+        object_id: ID,
+        market_id: String,
     }
 
-    #[test]
-    fun test_deposit() {
-        //ADMIN creates a new treasury
-        let mut test = ts::begin(ADMIN);
-        {
-            init_for_testing(ts::ctx(&mut test));
-        };
-
-        ts::next_tx(&mut test, ADMIN);
-        //NOTE: With new MetadataCoin type, we can't test this function.
-        let admin_cap = ts::take_from_sender<AdminCap>(&test);
-
-        new_treasury<USDC>(&admin_cap, utf8(b"USDC"), ts::ctx(&mut test));
-        //
-        //PLayer ALICE deposits 50 SUI
-        {
-            ts::next_tx(&mut test, ALICE);
-
-            let pay = coin::mint_for_testing<SUI>(100, ts::ctx(&mut test));
-            let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
-            deposit<SUI>(&mut treasury, pay, ts::ctx(&mut test));
-            assert!(treasury.balance.value() == 100);
-
-            ts::return_shared(treasury);
-            ts::next_tx(&mut test, ADMIN);
-        };
-
-
-        //Test deposit another token
-        ts::next_tx(&mut test, ALICE);
-        {
-            let usdc = coin::mint_for_testing<USDC>(100, ts::ctx(&mut test));
-            let mut treasury = ts::take_shared<Treasury<USDC>>(&test);
-            deposit<USDC>(&mut treasury, usdc, ts::ctx(&mut test));
-            assert!(treasury.balance.value() == 100);
-
-            ts::return_shared(treasury);
-        };
-        destroy(admin_cap);
-        ts::end(test);
+    public struct MintEvent has copy, drop {
+        order_id_yes: String,
+        user_yes: address,
+        amount_yes: u64,
+        order_id_no: String,
+        user_no: address,
+        amount_no: u64,
     }
 
-    #[test]
-    fun test_withdraw() {
-        //ADMIN creates a new treasury
-        let mut test = ts::begin(ADMIN);
-        {
-            init_for_testing(ts::ctx(&mut test));
+    public struct TransferEvent has copy, drop {
+        maker_order_id: String,
+        maker: address,
+        taker_order_id: String,
+        taker: address,
+        amount: u64,
+        coin_type: bool,
+    }
+
+    public struct MergeEvent has copy, drop {
+        order_id_yes: String,
+        user_yes: address,
+        amount_yes: u64,
+        order_id_no: String,
+        user_no: address,
+        amount_no: u64,
+    }
+
+    public struct ClaimEvent has copy, drop {
+        market_id: String,
+        winners: VecMap<address, u64>,
+    }
+
+    // Create a new market
+    entry fun create_market<T>(
+        _: &AdminCap,
+        id: String,
+        creator: address,
+        name: String,
+        conditions: String,
+        start_time: u64,
+        end_time: u64,
+        treasury: &mut Treasury<T>,
+        ctx: &mut TxContext,
+    ): address {
+        let user_balance = table::borrow_mut(&mut treasury.user_balances, creator);
+
+        assert!(end_time > start_time, EInvalidTimeArg);
+        assert!(*user_balance > 5_000_000, ENotEnoughBalance);
+
+        let object_id = object::new(ctx);
+        emit(NewMarketEvent { object_id: uid_to_inner(&object_id), market_id: id });
+        *user_balance = *user_balance - 5_000_000;
+
+        let contract_balance = table::borrow_mut(&mut treasury.user_balances, @sweepstake);
+        *contract_balance = *contract_balance + 5_000_000;
+
+        let address = object::uid_to_address(&object_id);
+        let market = Market {
+            id: object_id,
+            market_id: id,
+            creator,
+            name,
+            conditions,
+            start_time,
+            end_time,
+            yes_users: vec_map::empty(),
+            no_users: vec_map::empty(),
+            isClaimed: false,
+            winner: false,
+        };
+        transfer::transfer(market, ctx.sender());
+        address
+    }
+
+
+    fun mint(
+        market: &mut Market,
+        order_id_yes: String,
+        user_yes: address,
+        amount_yes: u64,
+        order_id_no: String,
+        user_no: address,
+        amount_no: u64,
+    ) {
+        if (!market.yes_users.contains(&user_yes)) {
+            market.yes_users.insert(user_yes, amount_yes);
+        } else {
+            let balance = *market.yes_users.get(&user_yes);
+            let new_balance = balance + amount_yes;
+            market.yes_users.remove(&user_yes);
+            market.yes_users.insert(user_yes, new_balance);
         };
 
-        ts::next_tx(&mut test, ADMIN);
-        let admin_cap = ts::take_from_sender<AdminCap>(&test);
-
-        new_treasury<SUI>(&admin_cap, utf8(b"SUI"), ts::ctx(&mut test));
-
-        //
-        //PLayer ALICE deposits 50 SUI
-        {
-            ts::next_tx(&mut test, ALICE);
-
-            let pay = coin::mint_for_testing<SUI>(50, ts::ctx(&mut test));
-            let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
-            deposit<SUI>(&mut treasury, pay, ts::ctx(&mut test));
-            assert!(treasury.balance.value() == 50);
-
-            ts::return_shared(treasury);
+        if (!market.no_users.contains(&user_no)) {
+            market.no_users.insert(user_no, amount_no);
+        } else {
+            let balance = *market.no_users.get(&user_no);
+            let new_balance = balance + amount_no;
+            market.no_users.remove(&user_no);
+            market.no_users.insert(user_no, new_balance);
         };
 
-        //Player ALICE withdraw 40 SUI
-        ts::next_tx(&mut test, ADMIN);
-        {
-            let mut treasury = ts::take_shared<Treasury<SUI>>(&test);
+        emit(MintEvent { order_id_yes, user_yes, amount_yes, order_id_no, user_no, amount_no });
+    }
 
+    fun transfer(
+        market: &mut Market,
+        maker_order_id: String,
+        maker: address,
+        taker_order_id: String,
+        taker: address,
+        amount: u64,
+        coin_type: bool,
+    ) {
+        if (coin_type) {
+            let balance = check_yes_balance(market, maker);
+            assert!(balance >= amount, ENotEnoughBalance);
+            let new_balance = balance - amount;
+            market.yes_users.remove(&maker);
+            market.yes_users.insert(maker, new_balance);
+            if (!market.yes_users.contains(&taker)) {
+                market.yes_users.insert(taker, amount);
+            } else {
+                let balance = *market.yes_users.get(&taker);
+                let new_balance = balance + amount;
+                market.yes_users.remove(&taker);
+                market.yes_users.insert(taker, new_balance);
+            };
+        } else {
+            let balance = check_no_balance(market, maker);
+            assert!(balance >= amount, ENotEnoughBalance);
+            let new_balance = balance - amount;
+            market.no_users.remove(&maker);
+            market.no_users.insert(maker, new_balance);
 
-            let admin_key = ts::new_ed25519_private_key();
-            let pubkey = test_scenario::get_ed25519_public_key(&admin_key);
-            let sig = test_scenario::sign_ed25519(&admin_key, &msg);
-
-
-            withdraw(&mut treasury, utf8(b"123-abc"), 40, ALICE, ts::ctx(&mut test));
-            assert!(treasury.balance.value() == 10);
-
-            ts::return_shared(treasury);
+            if (!market.no_users.contains(&taker)) {
+                market.no_users.insert(taker, amount);
+            } else {
+                let balance = *market.no_users.get(&taker);
+                let new_balance = balance + amount;
+                market.no_users.remove(&taker);
+                market.no_users.insert(taker, new_balance);
+            };
         };
 
-        ts::return_to_sender(&test, admin_cap);
-        ts::end(test);
+        emit(TransferEvent { maker_order_id, maker, taker_order_id, taker, amount, coin_type });
+    }
+
+    fun burn(
+        market: &mut Market,
+        order_id_yes: String,
+        user_yes: address,
+        amount_yes: u64,
+        order_id_no: String,
+        user_no: address,
+        amount_no: u64,
+    ) {
+        let balance_yes = check_yes_balance(market, user_yes);
+        let balance_no = check_no_balance(market, user_no);
+        assert!(balance_yes >= amount_yes && balance_no >= amount_no, ENotEnoughBalance);
+        let new_balance_yes = balance_yes - amount_yes;
+        let new_balance_no = balance_no - amount_no;
+        market.yes_users.remove(&user_yes);
+        market.yes_users.insert(user_yes, new_balance_yes);
+        market.no_users.remove(&user_no);
+        market.no_users.insert(user_no, new_balance_no);
+
+        emit(MergeEvent { order_id_yes, user_yes, amount_yes, order_id_no, user_no, amount_no });
+    }
+
+    entry fun execute_order<T>(
+        _: &AdminCap,
+        market: &mut Market,
+        maker_order_id: String,
+        maker: address,
+        amount_marker: u64,
+        taker_order_id: String,
+        taker: address,
+        amount_taker: u64,
+        type_coin: bool,
+        type_order: u64,
+        price: u64,
+        treasury: &mut Treasury<T>,
+    ) {
+        if (type_order == Mint) {
+            // maker is yes_user, taker is no_user
+            let maker_balance = table::borrow_mut(&mut treasury.user_balances, maker);
+            *maker_balance = *maker_balance - amount_marker * price;
+            let taker_balance = table::borrow_mut(&mut treasury.user_balances, taker);
+            *taker_balance = *taker_balance - amount_taker * price;
+            mint(market, maker_order_id, maker, amount_marker, taker_order_id, taker, amount_taker);
+        } else if (type_order == Transfer) {
+            // amount_taker is amount of token
+            let maker_balance = table::borrow_mut(&mut treasury.user_balances, maker);
+            assert!(*maker_balance >= amount_marker * price, ENotEnoughBalance);
+            *maker_balance = *maker_balance + amount_marker * price;
+            let taker_balance = table::borrow_mut(&mut treasury.user_balances, taker);
+            assert!(*taker_balance >= amount_taker * price, ENotEnoughBalance);
+            *taker_balance = *taker_balance - amount_taker * price;
+            transfer(market, maker_order_id, maker, taker_order_id, taker, amount_taker, type_coin);
+        } else if (type_order == Merge) {
+            // maker is yes_user, taker is no_user
+            let maker_balance = table::borrow_mut(&mut treasury.user_balances, maker);
+            *maker_balance = *maker_balance + amount_marker * price;
+            let taker_balance = table::borrow_mut(&mut treasury.user_balances, taker);
+            *taker_balance = *taker_balance + amount_taker * price;
+            burn(market, maker_order_id, maker, amount_marker, taker_order_id, taker, amount_taker);
+        }
+    }
+
+    entry fun claim_reward(_: &AdminCap, market: &mut Market, market_id: String, winner: bool) {
+        assert!(market.market_id == market_id, EWrongMarketId);
+        assert!(market.isClaimed == false, EAlreadyClaimed);
+
+        market.isClaimed = true;
+        if (winner) {
+            market.winner = true;
+            emit(ClaimEvent { market_id, winners: market.yes_users });
+        } else {
+            market.winner = false;
+            emit(ClaimEvent { market_id, winners: market.no_users });
+        }
+    }
+
+    //=================== ADMIN ===================//
+
+    public struct ChangePubkeyRequest has key {
+        id: UID,
+        new_pubkey: vector<u8>,
+        voters: vector<address>,
+        deadline: u64,
+        is_executed: bool,
+    }
+
+    public struct WithDrawRequest has key {
+        id: UID,
+        to: address,
+        amount: u64,
+        voters: vector<address>,
+        deadline: u64,
+        is_executed: bool,
+    }
+
+
+    public fun init_admin<T>(
+        admin_cap: &mut AdminCap,
+        treasury: &mut Treasury<T>,
+        admin_addresses: vector<address>,
+    ) {
+        assert!(is_init(&treasury.admin), 0x1);
+        assert!(vector::length(&admin_addresses) >= 3, ENotEnoughAdmin);
+        add_admin(&mut treasury.admin, admin_addresses);
+    }
+
+    public fun create_change_pubkey_request<T>(
+        treasury: &mut Treasury<T>,
+        new_pubkey: vector<u8>,
+        deadline: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
+
+        let request = ChangePubkeyRequest {
+            id: object::new(ctx),
+            new_pubkey,
+            voters: vector[],
+            deadline,
+            is_executed: false,
+        };
+
+        share_object(request)
+    }
+
+    public fun vote_change_pubkey<T>(
+        treasury: &mut Treasury<T>,
+        request: &mut ChangePubkeyRequest,
+        ctx: &TxContext,
+        clock: &Clock,
+    ) {
+        let current_time = timestamp_ms(clock);
+        assert!(request.deadline > current_time, EDeadlineExpired);
+        assert!(admin::is_admin(&treasury.admin,ctx.sender()), EInvalidAdminSig);
+        vector::push_back(&mut request.voters, ctx.sender());
+    }
+
+    public fun execute_change_pubkey<T>(
+        treasury: &mut Treasury<T>,
+        request: &mut ChangePubkeyRequest,
+        ctx: &TxContext
+    ) {
+        assert!(admin::is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
+        assert!(!request.is_executed, 0x2);
+        let length = vector::length(&request.voters);
+
+        assert!(length> 2 * num_of_admin(&treasury.admin) / 3, ENotEnoughAdmin);
+
+        // Change the pubkey of the treasury
+        treasury.pubkey = request.new_pubkey;
+        request.is_executed = true;
+    }
+
+    public fun create_withdraw_request<T>(
+        treasury: &mut Treasury<T>,
+        to: address,
+        amount: u64,
+        deadline: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
+        let request = WithDrawRequest {
+            id: object::new(ctx),
+            to,
+            amount,
+            voters: vector::empty<address>(),
+            deadline,
+            is_executed: false,
+        };
+
+        share_object(request)
+    }
+
+    public fun vote_withdraw<T>(
+        treasury: &mut Treasury<T>,
+        request: &mut WithDrawRequest,
+        ctx: &TxContext,
+        clock: &Clock,
+    ) {
+        let current_time = timestamp_ms(clock);
+        assert!(request.deadline > current_time, EDeadlineExpired);
+        assert!(admin::is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
+        vector::push_back(&mut request.voters, ctx.sender());
+    }
+
+    public fun execute_withdraw<T>(
+        treasury: &mut Treasury<T>,
+        request: &WithDrawRequest,
+        ctx: &mut TxContext
+    ) {
+        assert!(admin::is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
+        assert!(!request.is_executed, 0x2);
+        let length = vector::length(&request.voters);
+
+        assert!(length > 2 * num_of_admin(&treasury.admin) / 3, ENotEnoughAdmin);
+
+        // Withdraw the amount from the treasury
+        let user_balance = table::borrow_mut(&mut treasury.user_balances, @sweepstake);
+        assert!(*user_balance >= request.amount, EInsufficientBalance);
+        *user_balance = *user_balance - request.amount;
+
+        let withdraw = treasury.balance.split(request.amount);
+        let coin = coin::from_balance<T>(withdraw, ctx);
+        public_transfer(coin, request.to);
+    }
+
+    // =================== GETTER ===================//
+
+
+    public fun check_yes_balance(market: &Market, user_address: address): u64 {
+        let yes_users = market.yes_users;
+        let amount = if (yes_users.contains(&user_address)) yes_users.get(&user_address) else &0;
+        *amount
+    }
+
+    public fun check_no_balance(market: &Market, user_address: address): u64 {
+        let no_users = market.no_users;
+        let amount = if (no_users.contains(&user_address)) no_users.get(&user_address) else &0;
+        *amount
+    }
+
+    public fun get_market_info(market: &Market): (String, String, u64, u64) {
+        (market.name, market.conditions, market.start_time, market.end_time)
+    }
+
+    public fun get_conditions(market: &Market): String {
+        market.conditions
+    }
+
+    public fun get_yes_users(market: &Market): VecMap<address, u64> {
+        market.yes_users
+    }
+
+    public fun get_no_users(market: &Market): VecMap<address, u64> {
+        market.no_users
     }
 }

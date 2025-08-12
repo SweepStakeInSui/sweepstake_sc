@@ -3,3 +3,5 @@ node_modules
 scripts/.env
 .idea
 .gitignore
+/scripts/pnpm-lock.yaml
+/scripts/README.md
