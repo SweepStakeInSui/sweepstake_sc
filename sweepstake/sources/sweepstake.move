@@ -1,5 +1,6 @@
 module sweepstake::sweepstake {
     use std::string::{String, utf8};
+    use std::vector;
     use sui::balance;
     use sui::balance::Balance;
     use sui::bcs::to_bytes;
@@ -18,7 +19,6 @@ module sweepstake::sweepstake {
     use sweepstake::admin::{Admin, is_admin, is_init, add_admin, num_of_admin};
 
 
-
     // Error codes
     const EInsufficientBalance: u64 = 1002;
     const EDeadlineExpired: u64 = 1003;
@@ -28,6 +28,7 @@ module sweepstake::sweepstake {
     const EAlreadyClaimed: u64 = 1007;
     const EWrongMarketId: u64 = 1008;
     const ENotEnoughAdmin: u64 = 1009;
+    const EInvalidMarketId: u64 = 1010;
 
     // Type of the order
     const Mint: u64 = 0;
@@ -87,12 +88,16 @@ module sweepstake::sweepstake {
         let admin_cap = AdminCap {
             id: object::new(ctx)
         };
-        new_treasury<SUI>(&admin_cap, utf8(b"SUI"), ctx);
         transfer::transfer(admin_cap, ctx.sender());
     }
 
+    // Function to update admin public key for existing treasury
+    entry fun update_admin_pubkey<T>(treasury: &mut Treasury<T>, new_pubkey: vector<u8>, _: &AdminCap) {
+        treasury.pubkey = new_pubkey;
+    }
+
     // Admin will call this function to create a new treasury_pair deposit currency
-    entry fun new_treasury<T>(_: &AdminCap, coin_name: String, ctx: &mut TxContext) {
+    entry fun new_treasury<T>(_: &AdminCap, coin_name: String, admin_pubkey: vector<u8>, ctx: &mut TxContext) {
         // Create a new treasury
         let object_id = object::new(ctx);
         // Emit new treasury's id event
@@ -105,7 +110,6 @@ module sweepstake::sweepstake {
         let mut user_balances = table::new<address, u64>(ctx);
         table::add(&mut user_balances, @sweepstake, 0);
 
-
         // Share the treasury object
         let treasury = Treasury<T> {
             id: object_id,
@@ -113,7 +117,7 @@ module sweepstake::sweepstake {
             coin_name,
             user_balances,
             admin,
-            pubkey: ctx.sender().to_bytes(),
+            pubkey: admin_pubkey,
         };
 
 
@@ -149,7 +153,6 @@ module sweepstake::sweepstake {
         amount: u64,
         to: address,
         deadline: u64,
-        admin_pk: vector<u8>,
         admin_sig: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -166,7 +169,7 @@ module sweepstake::sweepstake {
 
         let byte_data = to_bytes(&withdraw_data);
         let hash_data = hash::keccak256(&byte_data);
-        let ok = ed25519::ed25519_verify(&admin_sig, &admin_pk, &hash_data);
+        let ok = ed25519::ed25519_verify(&admin_sig, &treasury.pubkey, &hash_data);
         assert!(ok, EInvalidAdminSig);
 
         *user_balance = *user_balance - amount;
@@ -253,43 +256,47 @@ module sweepstake::sweepstake {
     // Create a new market
     entry fun create_market<T>(
         _: &AdminCap,
-        id: String,
+        id: vector<String>,
         creator: address,
-        name: String,
+        name: vector<String>,
         conditions: String,
         start_time: u64,
         end_time: u64,
         treasury: &mut Treasury<T>,
         ctx: &mut TxContext,
-    ): address {
+    ) {
         let user_balance = table::borrow_mut(&mut treasury.user_balances, creator);
+        let length = vector::length(&id);
 
+        assert!(length == vector::length(&name), EInvalidMarketId);
         assert!(end_time > start_time, EInvalidTimeArg);
-        assert!(*user_balance > 5_000_000, ENotEnoughBalance);
+        assert!(*user_balance > length * 5_000_000, ENotEnoughBalance);
 
-        let object_id = object::new(ctx);
-        emit(NewMarketEvent { object_id: uid_to_inner(&object_id), market_id: id });
-        *user_balance = *user_balance - 5_000_000;
+        *user_balance = *user_balance - length * 5_000_000;
 
         let contract_balance = table::borrow_mut(&mut treasury.user_balances, @sweepstake);
-        *contract_balance = *contract_balance + 5_000_000;
+        *contract_balance = *contract_balance + length * 5_000_000;
 
-        let address = object::uid_to_address(&object_id);
-        let market = Market {
-            id: object_id,
-            market_id: id,
-            creator,
-            name,
-            conditions,
-            start_time,
-            end_time,
-            yes_users: vec_map::empty(),
-            no_users: vec_map::empty(),
-            isClaimed: false,
-            winner: false,
-        };
-        transfer::transfer(market, ctx.sender());
-        address
+        let mut i = 0;
+        while (i < length) {
+            let object_id = object::new(ctx);
+            emit(NewMarketEvent { object_id: uid_to_inner(&object_id), market_id: id[i] });
+            let market = Market {
+                id: object_id,
+                market_id: id[i],
+                creator,
+                name: name[i],
+                conditions,
+                start_time,
+                end_time,
+                yes_users: vec_map::empty(),
+                no_users: vec_map::empty(),
+                isClaimed: false,
+                winner: false,
+            };
+            transfer::transfer(market, ctx.sender());
+            i = i + 1;
+        }
     }
 
 
@@ -573,7 +580,15 @@ module sweepstake::sweepstake {
     }
 
     // =================== GETTER ===================//
+    public fun get_admin_pubkey<T>(treasury: &Treasury<T>): vector<u8>  {
+        treasury.pubkey
+    }
 
+    public fun get_balance<T>(treasury: &Treasury<T>, user: address): u64 {
+        let user_balances = &treasury.user_balances;
+        let amount = if (table::contains(user_balances, user)) table::borrow(user_balances, user) else &0;
+        *amount
+    }
 
     public fun check_yes_balance(market: &Market, user_address: address): u64 {
         let yes_users = market.yes_users;

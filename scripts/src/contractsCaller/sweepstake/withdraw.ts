@@ -2,7 +2,8 @@ import {Transaction} from '@mysten/sui/transactions'
 import * as console from 'node:console'
 import {AppConfig} from '../../config.js'
 import { bcs } from '@mysten/sui/bcs';
-import { keccak256 } from 'js-sha3';
+import pkg from 'js-sha3';
+const { keccak256 } = pkg;
 import { fromHex } from '@mysten/bcs';
 
 
@@ -20,7 +21,8 @@ export async function withdraw(
     const module_address = config.moduleAddress
 
     const pub_key = admin_keypair.getPublicKey().toRawBytes();
-    const message = sign(sweepstake_id,user,amount, user, 1751211486000);
+    console.log(pub_key);
+    const message = sign('withdraw',user,amount, user, 1751211486000);
     const signMessage = await admin_keypair.sign(message);
 
 
@@ -31,14 +33,12 @@ export async function withdraw(
     tx.moveCall({
         typeArguments: [coin_type],
         arguments: [
-            tx.object(sweepstake_id),
-            tx.pure.string('withdraw'),
-            tx.pure.u64(amount),
-            tx.pure.address(user),
-            tx.pure.u64(1751211486000),
-            tx.pure(bcs.vector(bcs.u8()).serialize(pub_key).toBytes()),
-            tx.pure(bcs.vector(bcs.u8()).serialize(signMessage).toBytes()),
-
+          tx.object(sweepstake_id),
+          tx.pure.string('withdraw'),
+          tx.pure.u64(amount),
+          tx.pure.address(user),
+          tx.pure.u64(1751211486000),
+          tx.pure(bcs.vector(bcs.u8()).serialize(signMessage).toBytes()),
         ],
         target: `${module_address}::sweepstake::withdraw`,
     })
