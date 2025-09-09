@@ -71,7 +71,7 @@ export async function withdraw(
 }
 
 function sign(withdrawid: string, from: string, amount: string, to: string, deadline: number) {
-  const withdrawData = bcs.struct('WithDrawData', {
+  const withdrawData = bcs.struct('WithDrawer', {
     withdraw_id: bcs.string(),
     from: bcs.Address,
     amount: bcs.u64(),

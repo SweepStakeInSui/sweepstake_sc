@@ -75,7 +75,7 @@ module sweepstake::sweepstake {
         amount: u64,
     }
 
-    public struct WithDrawData has copy, drop {
+    public struct WithDrawer has copy, drop {
         withdraw_id: String,
         from: address,
         amount: u64,
@@ -83,7 +83,6 @@ module sweepstake::sweepstake {
         deadline: u64,
     }
 
-    // The treasury contract has SUI as default token
     fun init(ctx: &mut TxContext) {
         let admin_cap = AdminCap {
             id: object::new(ctx)
@@ -159,7 +158,7 @@ module sweepstake::sweepstake {
         let user_balance = table::borrow_mut(&mut treasury.user_balances, ctx.sender());
         assert!(*user_balance >= amount, EInsufficientBalance);
 
-        let withdraw_data = WithDrawData {
+        let withdrawer = WithDrawer {
             withdraw_id,
             from: ctx.sender(),
             amount,
@@ -167,7 +166,7 @@ module sweepstake::sweepstake {
             deadline,
         };
 
-        let byte_data = to_bytes(&withdraw_data);
+        let byte_data = to_bytes(&withdrawer);
         let hash_data = hash::keccak256(&byte_data);
         let ok = ed25519::ed25519_verify(&admin_sig, &treasury.pubkey, &hash_data);
         assert!(ok, EInvalidAdminSig);
@@ -409,43 +408,75 @@ module sweepstake::sweepstake {
         price: u64,
         treasury: &mut Treasury<T>,
     ) {
+        assert!(market.isClaimed == false, EAlreadyClaimed);
         if (type_order == Mint) {
             // maker is yes_user, taker is no_user
-            let maker_balance = table::borrow_mut(&mut treasury.user_balances, maker);
+            let maker_balance = &mut treasury.user_balances[maker];
             *maker_balance = *maker_balance - amount_marker * price;
-            let taker_balance = table::borrow_mut(&mut treasury.user_balances, taker);
+            let taker_balance = &mut treasury.user_balances[taker];
             *taker_balance = *taker_balance - amount_taker * price;
             mint(market, maker_order_id, maker, amount_marker, taker_order_id, taker, amount_taker);
         } else if (type_order == Transfer) {
             // amount_taker is amount of token
-            let maker_balance = table::borrow_mut(&mut treasury.user_balances, maker);
+            let maker_balance = &mut treasury.user_balances[maker];
             assert!(*maker_balance >= amount_marker * price, ENotEnoughBalance);
             *maker_balance = *maker_balance + amount_marker * price;
-            let taker_balance = table::borrow_mut(&mut treasury.user_balances, taker);
+            let taker_balance = &mut treasury.user_balances[taker];
             assert!(*taker_balance >= amount_taker * price, ENotEnoughBalance);
             *taker_balance = *taker_balance - amount_taker * price;
             transfer(market, maker_order_id, maker, taker_order_id, taker, amount_taker, type_coin);
         } else if (type_order == Merge) {
             // maker is yes_user, taker is no_user
-            let maker_balance = table::borrow_mut(&mut treasury.user_balances, maker);
+            let maker_balance = &mut treasury.user_balances[maker];
             *maker_balance = *maker_balance + amount_marker * price;
-            let taker_balance = table::borrow_mut(&mut treasury.user_balances, taker);
+            let taker_balance = &mut treasury.user_balances[taker];
             *taker_balance = *taker_balance + amount_taker * price;
             burn(market, maker_order_id, maker, amount_marker, taker_order_id, taker, amount_taker);
         }
     }
 
-    entry fun claim_reward(_: &AdminCap, market: &mut Market, market_id: String, winner: bool) {
+    entry fun claim_reward<T>(_: &AdminCap, market: &mut Market, market_id: String, winner: bool, treasury: &mut Treasury<T>,) {
         assert!(market.market_id == market_id, EWrongMarketId);
         assert!(market.isClaimed == false, EAlreadyClaimed);
 
         market.isClaimed = true;
         if (winner) {
             market.winner = true;
-            emit(ClaimEvent { market_id, winners: market.yes_users });
+
+            let mut winners = &market.yes_users.keys();
+            let len = vector::length(winners);
+            let mut i = 0;
+            while (i < len) {
+                let user = winners[i];
+                let amount = *market.yes_users.get(&user);
+
+                if (!table::contains(&treasury.user_balances, user)) {
+                    table::add(&mut treasury.user_balances, user, 0);
+                };
+                let old_balance = table::remove(&mut treasury.user_balances, user);
+                table::add(&mut treasury.user_balances, user, old_balance + amount * 1_000_000);
+
+                i = i + 1;
+            };
+
         } else {
             market.winner = false;
-            emit(ClaimEvent { market_id, winners: market.no_users });
+
+            let mut winners = &market.no_users.keys();
+            let len = vector::length(winners);
+            let mut i = 0;
+            while (i < len) {
+                let user = winners[i];
+                let amount = *market.yes_users.get(&user);
+
+                if (!table::contains(&treasury.user_balances, user)) {
+                    table::add(&mut treasury.user_balances, user, 0);
+                };
+                let old_balance = table::remove(&mut treasury.user_balances, user);
+                table::add(&mut treasury.user_balances, user, old_balance + amount * 1_000_000);
+
+                i = i + 1;
+            };
         }
     }
 
