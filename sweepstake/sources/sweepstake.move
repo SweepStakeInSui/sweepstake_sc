@@ -467,7 +467,7 @@ module sweepstake::sweepstake {
             let mut i = 0;
             while (i < len) {
                 let user = winners[i];
-                let amount = *market.yes_users.get(&user);
+                let amount = *market.no_users.get(&user);
 
                 if (!table::contains(&treasury.user_balances, user)) {
                     table::add(&mut treasury.user_balances, user, 0);

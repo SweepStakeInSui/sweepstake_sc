@@ -54,7 +54,7 @@ export class AppConfig {
   gasStationClient: GasStationClient
 
   constructor(config: EnvConfig) {
-    this.client = new SuiClient({ url: getFullnodeUrl('devnet') })
+    this.client = new SuiClient({ url: getFullnodeUrl('testnet') })
     this.moduleAddress = config.moduleAddress
     this.admin = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.privateKey).secretKey)
     this.user = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.userPrivateKey).secretKey)

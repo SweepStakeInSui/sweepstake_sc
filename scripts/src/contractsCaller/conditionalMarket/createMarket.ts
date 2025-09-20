@@ -1,15 +1,18 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { AppConfig } from '../../config';
+import { AppConfig } from '../../config.js';
+import { bcs } from '@mysten/sui/bcs';
+
 
 export async function createMarket(
   config: AppConfig,
-  id: string,
+  id: string[],
   creator: string,
-  name: string,
-  description: string,
-  condition: string,
-  start_time: string,
-  end_time: string
+  name: string[],
+  conditions: string,
+  start_time: string | number | bigint,
+  end_time: string | number | bigint,
+  treasury: string,
+  coin_type: string
 ) {
   const client = config.client
   const admin = config.admin
@@ -18,18 +21,22 @@ export async function createMarket(
 
   const tx = new Transaction()
 
+  const idVecBytes = bcs.vector(bcs.string()).serialize(id).toBytes()
+  const nameVecBytes = bcs.vector(bcs.string()).serialize(name).toBytes()
+
   tx.moveCall({
+    typeArguments: [coin_type],
     arguments: [
       tx.object(adminCap),
-      tx.pure.string(id),
+      tx.pure(idVecBytes),
       tx.pure.address(creator),
-      tx.pure.string(name),
-      tx.pure.string(description),
-      tx.pure.string(condition),
-      tx.pure.u64(start_time),
-      tx.pure.u64(end_time),
+      tx.pure(nameVecBytes),
+      tx.pure.string(conditions),
+      tx.pure.u64(12345),
+      tx.pure.u64(123456),
+      tx.object(treasury),
     ],
-    target: `${module_address}::conditional_market::create_market`,
+    target: `${module_address}::sweepstake::create_market`,
   })
   tx.setGasBudget(10000000)
   let txb = await client.signAndExecuteTransaction({

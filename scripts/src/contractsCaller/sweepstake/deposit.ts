@@ -1,4 +1,3 @@
-import { buildGaslessTransaction } from '@shinami/clients/sui'
 import { AppConfig } from '../../config'
 import { Transaction } from '@mysten/sui/transactions'
 
@@ -11,6 +10,7 @@ export async function deposit(
 ) {
   // user_keypair is the user's keypair, set in here for test-only.
   const user_keypair = config.user
+  const admin_keypair = config.admin
 
   const nodeClient = config.shinamiClient
   const client = config.client
@@ -22,39 +22,43 @@ export async function deposit(
     coinType: coin_type,
   })
   console.log(user_coins_id)
-  const gaslessTx = await buildGaslessTransaction(
-    txb => {
-      const first_coin = user_coins_id.data[0].coinObjectId
-      for (const coin of user_coins_id.data) {
-        if (coin.coinObjectId != first_coin) {
-          txb.mergeCoins(first_coin, [coin.coinObjectId])
-        }
-      }
-      const [coin] = txb.splitCoins(
-        first_coin,
-        [txb.pure.u64(amount)]
-      )
-      txb.moveCall({
-        typeArguments: [coin_type],
-        arguments: [txb.object(sweepstakes_id), coin],
-        target: `${module_address}::sweepstake::deposit`,
-      })
-    },
-    { sui: nodeClient }
+  const tx = new  Transaction();
+
+
+  const first_coin = user_coins_id.data[0].coinObjectId
+  for (const coin of user_coins_id.data) {
+    if (coin.coinObjectId != first_coin) {
+      tx.mergeCoins(first_coin, [coin.coinObjectId])
+    }
+  }
+  const [coin] = tx.splitCoins(
+    first_coin,
+    [tx.pure.u64(amount)]
   )
-  gaslessTx.sender = sender
-  const sponsoredResponse = await gasStationClient.sponsorTransaction(gaslessTx)
-
-  ///TODO: Need to send it to FE for user sign
-  const senderSig = await Transaction.from(sponsoredResponse?.txBytes).sign({
-    signer: user_keypair,
+  tx.setSender(user_keypair.toSuiAddress())
+  tx.moveCall({
+    typeArguments: [coin_type],
+    arguments: [tx.object(sweepstakes_id), coin],
+    target: `${module_address}::sweepstake::deposit`,
   })
+  tx.setGasBudget(3000000)
+  tx.setGasOwner(admin_keypair.toSuiAddress())
 
-  //TODO: Return back the senderSig from FE and execute the transaction
-  const txb = await nodeClient.executeTransactionBlock({
-    transactionBlock: sponsoredResponse?.txBytes,
-    signature: [senderSig?.signature, sponsoredResponse?.signature],
+  let txbuild = await tx.build({client})
+  const userSignature = await tx.sign({
+    signer: user_keypair
   })
+  const adminSignature = await tx.sign({
+    signer: admin_keypair,
+  })
+  const submittedTx = await client.executeTransactionBlock({
+    transactionBlock: txbuild,
+    signature: [userSignature.signature, adminSignature.signature],
+  })
+  const txb = await client.waitForTransaction(submittedTx)
+
+
+
 
   const events = await client.queryEvents({
     query: {

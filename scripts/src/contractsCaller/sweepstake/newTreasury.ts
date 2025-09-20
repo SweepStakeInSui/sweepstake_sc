@@ -1,5 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
-import { AppConfig } from '../../config';
+// @ts-ignore
+import { AppConfig } from '../../config.js';
+import { bcs } from '@mysten/sui/bcs';
 
 export async function newTreasury(config: AppConfig, coin_type: string) {
   const client = config.client
@@ -9,11 +11,16 @@ export async function newTreasury(config: AppConfig, coin_type: string) {
 
   const coinName = coin_type.split('::').pop() || ''
   console.log('coinName', coinName);
+  
+  // Get admin public key
+  const admin_pubkey = admin.getPublicKey().toRawBytes();
+  console.log('Admin pubkey:', admin_pubkey);
+  
   const tx = new Transaction()
 
   tx.moveCall({
     typeArguments: [coin_type],
-    arguments: [tx.object(adminCap), tx.pure.string(coinName)],
+    arguments: [tx.object(adminCap), tx.pure.string(coinName), tx.pure(bcs.vector(bcs.u8()).serialize(admin_pubkey).toBytes())],
     target: `${module_address}::sweepstake::new_treasury`   ,
   })
   tx.setGasBudget(10000000)

@@ -10,7 +10,7 @@ export async function checkBalance(config: AppConfig
 
   tx.moveCall({
     typeArguments: [coin_type],
-    arguments: [tx.object(sweepstake_id), tx.pure.address(user)],
+    arguments: [tx.object(sweepstake_id),tx.pure.address('0x0')],
     target: `${module_address}::sweepstake::get_balance`,
   })
   tx.setGasBudget(10000000)
@@ -19,6 +19,7 @@ export async function checkBalance(config: AppConfig
     transactionBlock: tx,
   })
   const result = submittedTx.results?.pop()
+  // console.log(result?.returnValues);
   if (result && result.returnValues) {
     const [byteArray] = result.returnValues[0]
     const buffer = Buffer.from(byteArray)
