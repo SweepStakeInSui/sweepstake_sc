@@ -1,5 +1,4 @@
 import { Transaction } from '@mysten/sui/transactions';
-// @ts-ignore
 import { AppConfig } from '../../config.js';
 import { bcs } from '@mysten/sui/bcs';
 

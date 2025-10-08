@@ -1,4 +1,4 @@
-import { AppConfig } from '../../config'
+import { AppConfig } from '../../config.js'
 import { Transaction } from '@mysten/sui/transactions'
 
 export async function deposit(
@@ -12,12 +12,10 @@ export async function deposit(
   const user_keypair = config.user
   const admin_keypair = config.admin
 
-  const nodeClient = config.shinamiClient
   const client = config.client
-  const gasStationClient = config.gasStationClient
   const module_address = config.moduleAddress
 
-  const user_coins_id = await nodeClient.getCoins({
+  const user_coins_id = await config.client.getCoins({
     owner: sender,
     coinType: coin_type,
   })
@@ -35,7 +33,7 @@ export async function deposit(
     first_coin,
     [tx.pure.u64(amount)]
   )
-  tx.setSender(user_keypair.toSuiAddress())
+  tx.setSender(sender)
   tx.moveCall({
     typeArguments: [coin_type],
     arguments: [tx.object(sweepstakes_id), coin],

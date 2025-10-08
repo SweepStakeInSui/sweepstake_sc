@@ -18,6 +18,8 @@ module sweepstake::sweepstake {
     use sweepstake::admin;
     use sweepstake::admin::{Admin, is_admin, is_init, add_admin, num_of_admin};
 
+    use sweepstake::governance;
+
 
     // Error codes
     const EInsufficientBalance: u64 = 1002;
@@ -34,6 +36,9 @@ module sweepstake::sweepstake {
     const Mint: u64 = 0;
     const Transfer: u64 = 1;
     const Merge: u64 = 2;
+
+    // Constant
+    const MARKET_FEE: u64 = 1_000_000;
 
     // AdminCap object
     public struct AdminCap has key {
@@ -93,6 +98,35 @@ module sweepstake::sweepstake {
     // Function to update admin public key for existing treasury
     entry fun update_admin_pubkey<T>(treasury: &mut Treasury<T>, new_pubkey: vector<u8>, _: &AdminCap) {
         treasury.pubkey = new_pubkey;
+    }
+
+    // Package-only helpers for governance module
+    public(friend) fun set_treasury_pubkey<T>(treasury: &mut Treasury<T>, new_pubkey: vector<u8>) {
+        treasury.pubkey = new_pubkey;
+    }
+
+    public(friend) fun withdraw_from_treasury<T>(
+        treasury: &mut Treasury<T>,
+        to: address,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let user_balance = table::borrow_mut(&mut treasury.user_balances, @sweepstake);
+        assert!(*user_balance >= amount, EInsufficientBalance);
+        *user_balance = *user_balance - amount;
+
+        let withdraw = treasury.balance.split(amount);
+        let coin = coin::from_balance<T>(withdraw, ctx);
+        public_transfer(coin, to);
+    }
+
+    // Package-only admin helpers to avoid exposing internal fields
+    public(friend) fun is_treasury_admin<T>(treasury: &Treasury<T>, who: address): bool {
+        is_admin(&treasury.admin, who)
+    }
+
+    public(friend) fun num_treasury_admins<T>(treasury: &Treasury<T>): u64 {
+        num_of_admin(&treasury.admin)
     }
 
     // Admin will call this function to create a new treasury_pair deposit currency
@@ -269,12 +303,12 @@ module sweepstake::sweepstake {
 
         assert!(length == vector::length(&name), EInvalidMarketId);
         assert!(end_time > start_time, EInvalidTimeArg);
-        assert!(*user_balance > length * 5_000_000, ENotEnoughBalance);
+        assert!(*user_balance > length * MARKET_FEE, ENotEnoughBalance);
 
-        *user_balance = *user_balance - length * 5_000_000;
+        *user_balance = *user_balance - length * MARKET_FEE;
 
         let contract_balance = table::borrow_mut(&mut treasury.user_balances, @sweepstake);
-        *contract_balance = *contract_balance + length * 5_000_000;
+        *contract_balance = *contract_balance + length * MARKET_FEE;
 
         let mut i = 0;
         while (i < length) {
@@ -480,135 +514,7 @@ module sweepstake::sweepstake {
         }
     }
 
-    //=================== ADMIN ===================//
-
-    public struct ChangePubkeyRequest has key {
-        id: UID,
-        new_pubkey: vector<u8>,
-        voters: vector<address>,
-        deadline: u64,
-        is_executed: bool,
-    }
-
-    public struct WithDrawRequest has key {
-        id: UID,
-        to: address,
-        amount: u64,
-        voters: vector<address>,
-        deadline: u64,
-        is_executed: bool,
-    }
-
-
-    public fun init_admin<T>(
-        admin_cap: &mut AdminCap,
-        treasury: &mut Treasury<T>,
-        admin_addresses: vector<address>,
-    ) {
-        assert!(is_init(&treasury.admin), 0x1);
-        assert!(vector::length(&admin_addresses) >= 3, ENotEnoughAdmin);
-        add_admin(&mut treasury.admin, admin_addresses);
-    }
-
-    public fun create_change_pubkey_request<T>(
-        treasury: &mut Treasury<T>,
-        new_pubkey: vector<u8>,
-        deadline: u64,
-        ctx: &mut TxContext
-    ) {
-        assert!(is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
-
-        let request = ChangePubkeyRequest {
-            id: object::new(ctx),
-            new_pubkey,
-            voters: vector[],
-            deadline,
-            is_executed: false,
-        };
-
-        share_object(request)
-    }
-
-    public fun vote_change_pubkey<T>(
-        treasury: &mut Treasury<T>,
-        request: &mut ChangePubkeyRequest,
-        ctx: &TxContext,
-        clock: &Clock,
-    ) {
-        let current_time = timestamp_ms(clock);
-        assert!(request.deadline > current_time, EDeadlineExpired);
-        assert!(admin::is_admin(&treasury.admin,ctx.sender()), EInvalidAdminSig);
-        vector::push_back(&mut request.voters, ctx.sender());
-    }
-
-    public fun execute_change_pubkey<T>(
-        treasury: &mut Treasury<T>,
-        request: &mut ChangePubkeyRequest,
-        ctx: &TxContext
-    ) {
-        assert!(admin::is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
-        assert!(!request.is_executed, 0x2);
-        let length = vector::length(&request.voters);
-
-        assert!(length> 2 * num_of_admin(&treasury.admin) / 3, ENotEnoughAdmin);
-
-        // Change the pubkey of the treasury
-        treasury.pubkey = request.new_pubkey;
-        request.is_executed = true;
-    }
-
-    public fun create_withdraw_request<T>(
-        treasury: &mut Treasury<T>,
-        to: address,
-        amount: u64,
-        deadline: u64,
-        ctx: &mut TxContext
-    ) {
-        assert!(is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
-        let request = WithDrawRequest {
-            id: object::new(ctx),
-            to,
-            amount,
-            voters: vector::empty<address>(),
-            deadline,
-            is_executed: false,
-        };
-
-        share_object(request)
-    }
-
-    public fun vote_withdraw<T>(
-        treasury: &mut Treasury<T>,
-        request: &mut WithDrawRequest,
-        ctx: &TxContext,
-        clock: &Clock,
-    ) {
-        let current_time = timestamp_ms(clock);
-        assert!(request.deadline > current_time, EDeadlineExpired);
-        assert!(admin::is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
-        vector::push_back(&mut request.voters, ctx.sender());
-    }
-
-    public fun execute_withdraw<T>(
-        treasury: &mut Treasury<T>,
-        request: &WithDrawRequest,
-        ctx: &mut TxContext
-    ) {
-        assert!(admin::is_admin(&treasury.admin, ctx.sender()), EInvalidAdminSig);
-        assert!(!request.is_executed, 0x2);
-        let length = vector::length(&request.voters);
-
-        assert!(length > 2 * num_of_admin(&treasury.admin) / 3, ENotEnoughAdmin);
-
-        // Withdraw the amount from the treasury
-        let user_balance = table::borrow_mut(&mut treasury.user_balances, @sweepstake);
-        assert!(*user_balance >= request.amount, EInsufficientBalance);
-        *user_balance = *user_balance - request.amount;
-
-        let withdraw = treasury.balance.split(request.amount);
-        let coin = coin::from_balance<T>(withdraw, ctx);
-        public_transfer(coin, request.to);
-    }
+    //=================== ADMIN (moved to governance) ===================//
 
     // =================== GETTER ===================//
     public fun get_admin_pubkey<T>(treasury: &Treasury<T>): vector<u8>  {

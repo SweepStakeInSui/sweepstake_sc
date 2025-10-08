@@ -1,6 +1,7 @@
 module sweepstake::admin {
     use std::vector;
     use sui::object;
+    use sui::transfer::share_object;
 
     const ENOT_ADMIN: u64 = 0x1;
 
@@ -8,6 +9,12 @@ module sweepstake::admin {
         id: UID,
         addresses: vector<address>,
         is_init: bool,
+    }
+
+    public struct ChangeAdminRequest has key {
+        id: UID,
+        address: address,
+        deadline: u64,
     }
 
     public fun create_admin(ctx: &mut TxContext): Admin {
@@ -19,10 +26,21 @@ module sweepstake::admin {
         }
     }
 
-    public fun create_add_admin_request(admin: &mut Admin, address: address) {
+    public fun create_add_admin_request(admin: &mut Admin, address: address, deadline: u64, ctx: &mut TxContext) {
         assert!(admin.is_init, ENOT_ADMIN);
         assert!(!vector::contains(&admin.addresses, &address), 0x2);
+        let request = ChangeAdminRequest {
+            id: object::new(ctx),
+            address,
+            deadline,
+        };
+        share_object(request);
+    }
 
+    public fun vote_add_admin(admin: &mut Admin, request: &mut ChangeAdminRequest) {
+        assert!(admin.is_init, ENOT_ADMIN);
+        assert!(!vector::contains(&admin.addresses, &request.address), 0x2);
+        vector::push_back(&mut admin.addresses, request.address);
     }
 
     public fun num_of_admin(admin: &Admin): u64 {

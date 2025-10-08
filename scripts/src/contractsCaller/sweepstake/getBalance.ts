@@ -10,7 +10,7 @@ export async function checkBalance(config: AppConfig
 
   tx.moveCall({
     typeArguments: [coin_type],
-    arguments: [tx.object(sweepstake_id),tx.pure.address('0x0')],
+    arguments: [tx.object(sweepstake_id),tx.pure.address(user)],
     target: `${module_address}::sweepstake::get_balance`,
   })
   tx.setGasBudget(10000000)
