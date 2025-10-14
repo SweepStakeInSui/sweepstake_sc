@@ -48,7 +48,7 @@ module sweepstake::admin {
         vector::length(&admin.addresses)
     }
 
-    public fun is_admin(admin: &Admin, address: address): bool {
+    public(package) fun is_admin(admin: &Admin, address: address): bool {
         assert!(admin.is_init, ENOT_ADMIN);
         vector::contains(&admin.addresses, &address)
     }

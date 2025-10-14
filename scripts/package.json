@@ -4,7 +4,11 @@
 	"private": true,
 	"main": "dist/main.js",
 	"scripts": {
-		"test:flow": "node --loader ts-node/esm tests/test_flow.ts"
+		"test:flow": "node --loader ts-node/esm tests/test_flow.ts",
+		"test:governance": "node --loader ts-node/esm tests/run_governance_tests.ts",
+		"test:governance:unit": "node --loader ts-node/esm tests/run_governance_tests.ts --unit",
+		"test:governance:integration": "node --loader ts-node/esm tests/run_governance_tests.ts --integration",
+		"test:governance:comprehensive": "node --loader ts-node/esm tests/run_governance_tests.ts --comprehensive"
 	},
 	"type": "module",
 	"keywords": [],

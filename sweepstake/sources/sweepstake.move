@@ -101,11 +101,11 @@ module sweepstake::sweepstake {
     }
 
     // Package-only helpers for governance module
-    public(friend) fun set_treasury_pubkey<T>(treasury: &mut Treasury<T>, new_pubkey: vector<u8>) {
+    public(package) fun set_treasury_pubkey<T>(treasury: &mut Treasury<T>, new_pubkey: vector<u8>) {
         treasury.pubkey = new_pubkey;
     }
 
-    public(friend) fun withdraw_from_treasury<T>(
+    public(package) fun withdraw_from_treasury<T>(
         treasury: &mut Treasury<T>,
         to: address,
         amount: u64,
@@ -121,11 +121,11 @@ module sweepstake::sweepstake {
     }
 
     // Package-only admin helpers to avoid exposing internal fields
-    public(friend) fun is_treasury_admin<T>(treasury: &Treasury<T>, who: address): bool {
+    public(package) fun is_treasury_admin<T>(treasury: &Treasury<T>, who: address): bool {
         is_admin(&treasury.admin, who)
     }
 
-    public(friend) fun num_treasury_admins<T>(treasury: &Treasury<T>): u64 {
+    public(package) fun num_treasury_admins<T>(treasury: &Treasury<T>): u64 {
         num_of_admin(&treasury.admin)
     }
 
