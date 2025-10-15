@@ -46,7 +46,7 @@ export class AppConfig {
   adminCapConditional: string
 
   constructor(config: EnvConfig) {
-    this.client = new SuiClient({ url: getFullnodeUrl('testnet') })
+    this.client = new SuiClient({ url: getFullnodeUrl('mainnet') })
     this.moduleAddress = config.moduleAddress
     this.admin = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.privateKey).secretKey)
     this.user = Ed25519Keypair.fromSecretKey(decodeSuiPrivateKey(config.userPrivateKey).secretKey)
