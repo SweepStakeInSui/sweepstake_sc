@@ -44,7 +44,7 @@ contract SweepstakeUma is Auth {
         liveness = 30;
         reward = 0;
         bondCurrency = IERC20(
-            0x9b4A302A548c7e313c2b74C461db7b84d3074A84
+            0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
         );
         bond = 0;
     }
