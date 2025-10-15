@@ -8,7 +8,12 @@
 		"test:governance": "node --loader ts-node/esm tests/run_governance_tests.ts",
 		"test:governance:unit": "node --loader ts-node/esm tests/run_governance_tests.ts --unit",
 		"test:governance:integration": "node --loader ts-node/esm tests/run_governance_tests.ts --integration",
-		"test:governance:comprehensive": "node --loader ts-node/esm tests/run_governance_tests.ts --comprehensive"
+		"test:governance:comprehensive": "node --loader ts-node/esm tests/run_governance_tests.ts --comprehensive",
+		"check:env": "node --loader ts-node/esm deploy/check-environment.ts",
+		"deploy:sui": "node --loader ts-node/esm deploy/mainnet.ts",
+		"deploy:full": "node --loader ts-node/esm deploy/deploy-full-mainnet.ts",
+		"test:mainnet": "node --loader ts-node/esm tests/test_mainnet.ts",
+		"verify:all": "node --loader ts-node/esm deploy/verify-deployment.ts"
 	},
 	"type": "module",
 	"keywords": [],

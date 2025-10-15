@@ -2,7 +2,11 @@
   "name": "hardhat-project",
   "scripts": {
     "cancel-tx": "npx ts-node scripts/cancelTransaction.ts",
-    "cancel-specific": "npx ts-node scripts/cancelSpecificTransaction.ts"
+    "cancel-specific": "npx ts-node scripts/cancelSpecificTransaction.ts",
+    "deploy:base": "npx ts-node scripts/deployBase.ts",
+    "configure:uma": "npx ts-node scripts/setParameters.ts",
+    "verify:uma": "npx ts-node scripts/verifyDeployment.ts",
+    "deploy:subgraph": "cd subgraph && npm run deploy"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
